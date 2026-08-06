@@ -1,9 +1,11 @@
 "use server";
+import { isE2EBypass } from "@/lib/environment";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { markUserFields } from "@/lib/domain/provenance";
 import { scoreDuplicate } from "@/lib/domain/duplicates";
 import { canonicalizeUrl, recognizeSource } from "@/lib/sources/connector";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 import { jobInputSchema } from "@/lib/validation/jobs";
 
@@ -19,8 +21,14 @@ export async function createJob(formData: FormData) {
     memo: formData.get("memo") ?? "",
   });
   if (!input.success) redirect("/jobs/new?error=invalid");
-  if (process.env.E2E_BYPASS_AUTH === "true") redirect("/jobs?created=demo");
   const supabase = await createClient();
+  const rateLimit = await consumeRateLimit(supabase, "mutation_write");
+  if (!rateLimit.allowed) {
+    throw new Error(rateLimit.unavailable
+      ? "현재 저장 요청을 확인할 수 없습니다. 잠시 후 다시 시도해 주세요."
+      : `저장 요청이 너무 많습니다. ${rateLimit.retryAfter}초 후 다시 시도해 주세요.`);
+  }
+  if (isE2EBypass()) redirect("/jobs?created=demo");
   const normalizedUrl = canonicalizeUrl(input.data.originalUrl);
   const { data: existing } = await supabase.from("job_sources").select("job_id").eq("normalized_url", normalizedUrl).maybeSingle();
   if (existing) redirect(`/jobs/${existing.job_id}?duplicate=url`);

@@ -1,4 +1,16 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+
+const auditedRoutes = ["/login", "/consent", "/terms", "/privacy", "/sources", "/jobs", "/jobs/new", "/jobs/00000000-0000-4000-8000-000000000013", "/settings/data"] as const;
+
+test("has no serious or critical axe violations on public and primary app routes", async ({ page }) => {
+  for (const route of auditedRoutes) {
+    await page.goto(route);
+    const results = await new AxeBuilder({ page }).analyze();
+    const blocking = results.violations.filter(({ impact }) => impact === "serious" || impact === "critical");
+    expect(blocking, `${route}: ${blocking.map(({ id }) => id).join(", ")}`).toEqual([]);
+  }
+});
 
 test("supports keyboard focus, accessible names, and announced errors", async ({ page }) => {
   await page.goto("/login");

@@ -64,3 +64,10 @@ textarea { min-height: 100px; resize: vertical; }
 .source-status small { display: block; width: 100%; }
 
 :focus-visible { outline: 3px solid #ffbf47; outline-offset: 3px; }
+
+.skip-link { position: fixed; left: 12px; top: -60px; z-index: 100; padding: 10px 14px; background: var(--text); color: white; }
+.skip-link:focus { top: 12px; }
+.legal-footer { border-top: 1px solid var(--line); padding-block: 20px; background: var(--surface); font-size: .9rem; }
+.policy-links { margin-top: 18px; font-size: .85rem; color: var(--muted); }
+.danger-zone { border-color: #f2b8b5; }
+.button.danger { background: var(--danger); }

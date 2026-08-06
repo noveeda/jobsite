@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import { deleteJob, restoreRevision, updateTracking } from "@/app/(dashboard)/jobs/tracking-actions";
 import { createClient } from "@/lib/supabase/client";
@@ -16,6 +16,63 @@ const statuses = [
   ["rejected", "불합격"],
   ["excluded", "제외"],
 ] as const;
+
+const focusableSelector = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled]):not([type='hidden'])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "[tabindex]:not([tabindex='-1'])",
+].join(",");
+
+function useAlertDialogFocus(
+  open: boolean,
+  dialogRef: RefObject<HTMLDivElement | null>,
+  initialFocusRef: RefObject<HTMLButtonElement | null>,
+  triggerRef: RefObject<HTMLButtonElement | null>,
+  close: () => void,
+) {
+  useEffect(() => {
+    if (!open) return;
+    const dialog = dialogRef.current;
+    const trigger = triggerRef.current;
+    if (!dialog) return;
+    initialFocusRef.current?.focus();
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        close();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const focusable = Array.from(dialog!.querySelectorAll<HTMLElement>(focusableSelector));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !dialog!.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !dialog!.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    dialog.addEventListener("keydown", onKeyDown);
+    return () => {
+      dialog.removeEventListener("keydown", onKeyDown);
+      trigger?.focus();
+    };
+  }, [close, dialogRef, initialFocusRef, open, triggerRef]);
+}
 
 export type JobRevisionView = {
   id: string;
@@ -59,6 +116,17 @@ export function JobDetail({
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const versionRef = useRef(job.updatedAt);
+  const restoreDialogRef = useRef<HTMLDivElement>(null);
+  const restoreConfirmRef = useRef<HTMLButtonElement>(null);
+  const restoreTriggerRef = useRef<HTMLButtonElement>(null);
+  const deleteDialogRef = useRef<HTMLDivElement>(null);
+  const deleteConfirmRef = useRef<HTMLButtonElement>(null);
+  const deleteTriggerRef = useRef<HTMLButtonElement>(null);
+  const closeRestore = useCallback(() => setRestoreId(null), []);
+  const closeDelete = useCallback(() => setDeleteConfirm(false), []);
+
+  useAlertDialogFocus(Boolean(restoreId), restoreDialogRef, restoreConfirmRef, restoreTriggerRef, closeRestore);
+  useAlertDialogFocus(deleteConfirm, deleteDialogRef, deleteConfirmRef, deleteTriggerRef, closeDelete);
 
   function applyServerJob(value: {
     applicationStatus: string;
@@ -204,7 +272,10 @@ export function JobDetail({
           <label>다음 행동<input name="nextActionAt" type="datetime-local" value={nextActionAt} onChange={(event) => setNextActionAt(event.target.value)} /></label>
           <div className="row">
             <button className="button" disabled={pending}>{pending ? "저장 중" : "저장"}</button>
-            <button className="button secondary" type="button" onClick={() => setDeleteConfirm(true)}>공고 삭제</button>
+            <button className="button secondary" type="button" onClick={(event) => {
+              deleteTriggerRef.current = event.currentTarget;
+              setDeleteConfirm(true);
+            }}>공고 삭제</button>
           </div>
           {failed && <div role="alert" className="error">저장하지 못했습니다. 연결 후 다시 시도해 주세요. <button className="link-button" type="button" onClick={() => formRef.current?.requestSubmit()}>다시 시도</button></div>}
           {saved && <p role="status">저장했습니다.</p>}
@@ -227,7 +298,10 @@ export function JobDetail({
                     <small className="muted">{new Date(revision.changedAt).toLocaleString("ko-KR")} · {revision.deviceId} · {revision.changeKind}</small>
                     {revisionNext && <small className="muted">다음 행동: {new Date(revisionNext).toLocaleString("ko-KR")}</small>}
                   </div>
-                  <button className="button secondary" type="button" onClick={() => setRestoreId(revision.id)}>이 값으로 복구</button>
+                  <button className="button secondary" type="button" onClick={(event) => {
+                    restoreTriggerRef.current = event.currentTarget;
+                    setRestoreId(revision.id);
+                  }}>이 값으로 복구</button>
                 </li>
               );
             })}
@@ -236,43 +310,43 @@ export function JobDetail({
       </section>
 
       {restoreId && (
-        <div className="confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="restore-title">
+        <div ref={restoreDialogRef} className="confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="restore-title">
           <div className="card stack">
             <h2 id="restore-title">이 값으로 복구할까요?</h2>
             <p>현재 값도 변경 이력에 남아 다시 복구할 수 있습니다.</p>
             <div className="row">
               {testMode ? (
-                <button className="button" type="button" onClick={confirmRestore}>복구 확인</button>
+                <button ref={restoreConfirmRef} className="button" type="button" onClick={confirmRestore}>복구 확인</button>
               ) : (
                 <form action={restoreRevision}>
                   <input type="hidden" name="jobId" value={job.id} />
                   <input type="hidden" name="revisionId" value={restoreId} />
                   <input type="hidden" name="deviceId" value={device} />
-                  <button className="button">복구 확인</button>
+                  <button ref={restoreConfirmRef} className="button">복구 확인</button>
                 </form>
               )}
-              <button className="button secondary" type="button" onClick={() => setRestoreId(null)}>취소</button>
+              <button className="button secondary" type="button" onClick={closeRestore}>취소</button>
             </div>
           </div>
         </div>
       )}
 
       {deleteConfirm && (
-        <div className="confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="delete-title">
+        <div ref={deleteDialogRef} className="confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="delete-title">
           <div className="card stack">
             <h2 id="delete-title">공고를 삭제할까요?</h2>
             <p>삭제 전 값은 변경 이력에 보존됩니다.</p>
             <div className="row">
               {testMode ? (
-                <button className="button" type="button" onClick={confirmDelete}>삭제 확인</button>
+                <button ref={deleteConfirmRef} className="button" type="button" onClick={confirmDelete}>삭제 확인</button>
               ) : (
                 <form action={deleteJob}>
                   <input type="hidden" name="jobId" value={job.id} />
                   <input type="hidden" name="deviceId" value={device} />
-                  <button className="button">삭제 확인</button>
+                  <button ref={deleteConfirmRef} className="button">삭제 확인</button>
                 </form>
               )}
-              <button className="button secondary" type="button" onClick={() => setDeleteConfirm(false)}>취소</button>
+              <button className="button secondary" type="button" onClick={closeDelete}>취소</button>
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AccountDeletion } from "@/components/account-deletion";
 
 type Preview = {
   counts: { jobs: number; sources: number; duplicatePairs: number; revisions: number };
@@ -101,6 +102,7 @@ export default function DataSettingsPage() {
         {error && <p role="alert" className="error">{error}</p>}
         {success && <p role="status">{success}</p>}
       </section>
+      <AccountDeletion />
     </div>
   );
 }

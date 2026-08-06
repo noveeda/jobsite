@@ -1,7 +1,10 @@
+import { isE2EBypass } from "@/lib/environment";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { refreshSource, type RefreshJob, type RefreshSourceInput } from "@/lib/sources/connector";
 import { createClient } from "@/lib/supabase/server";
+import { logSafeEvent, requestId } from "@/lib/observability/safe-logger";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
 
 type TestRefresh = { checkedAt: string; lastSuccessAt: string | null; status: "active" | "unreachable" | "unsupported" };
 const testGlobal = globalThis as typeof globalThis & { __jobHubSourceRefresh?: Map<string, TestRefresh> };
@@ -24,9 +27,10 @@ async function testResponse(id: string) {
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const id = requestId(request.headers.get("x-request-id"));
   const user = await requireUser();
   const { id: jobId } = await params;
-  if (process.env.E2E_BYPASS_AUTH === "true") return NextResponse.json(await testResponse(jobId));
+  if (isE2EBypass()) return NextResponse.json(await testResponse(jobId));
 
   let sourceId = "";
   try {
@@ -52,6 +56,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   if (!source || !job) {
     return NextResponse.json({ code: "NOT_FOUND", message: "저장된 공고 또는 출처를 찾을 수 없습니다." }, { status: 404 });
+  }
+
+  const limit = await consumeRateLimit(supabase, "source_refresh");
+  if (!limit.allowed) {
+    logSafeEvent({ requestId: id, category: "source_refresh", outcome: "denied", errorCode: limit.unavailable ? "RATE_LIMIT_UNAVAILABLE" : "RATE_LIMITED" });
+    return NextResponse.json({ code: limit.unavailable ? "RATE_LIMIT_UNAVAILABLE" : "RATE_LIMITED", message: "요청이 많습니다. 저장된 공고는 변경되지 않았습니다.", requestId: id }, { status: limit.unavailable ? 503 : 429, headers: { "retry-after": String(limit.retryAfter) } });
   }
 
   const storedJob: RefreshJob = {

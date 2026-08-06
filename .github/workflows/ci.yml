@@ -10,23 +10,66 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
+      APP_BASE_URL: https://ci.invalid
+      PUBLIC_OPERATOR_NAME: CI fixture - not a production operator
+      PUBLIC_PRIVACY_EMAIL: privacy@ci.invalid
+      PUBLIC_POLICY_EFFECTIVE_DATE: "2026-08-07"
       SARAMIN_CONNECTOR_ENABLED: "false"
       JOBKOREA_CONNECTOR_ENABLED: "false"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npx supabase start
-      - run: npx supabase db reset
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run test:unit
-      - run: npm run build
-      - run: npx supabase test db
-      - run: npm run test:e2e
-      - if: always()
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Start local Supabase
+        run: npx supabase start
+
+      - name: Export local Supabase fixture credentials
+        shell: bash
+        run: |
+          set -eo pipefail
+          fixture_file="$(mktemp)"
+          trap 'rm -f -- "$fixture_file"' EXIT
+          npx supabase status -o env > "$fixture_file"
+          set -a
+          . "$fixture_file"
+          set +a
+
+          public_key="$PUBLISHABLE_KEY"
+          if [ -z "$public_key" ]; then
+            public_key="$ANON_KEY"
+          fi
+          admin_key="$SERVICE_ROLE_KEY"
+          test -n "$API_URL"
+          test -n "$public_key"
+          test -n "$admin_key"
+
+          echo "::add-mask::$admin_key"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$public_key"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$admin_key"
+          } >> "$GITHUB_ENV"
+
+      - name: Reset local database
+        run: npx supabase db reset
+
+      - name: Verify public beta
+        run: npm run verify:beta
+        # test:e2e discovers tests/e2e/accessibility.spec.ts, so axe and
+        # keyboard/mobile accessibility run once as part of the full E2E gate.
+
+      - name: Stop local Supabase
+        if: always()
         run: npx supabase stop --no-backup

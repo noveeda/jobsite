@@ -16,6 +16,10 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321",
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "test-key",
       E2E_BYPASS_AUTH: "true",
+      APP_BASE_URL: "http://127.0.0.1:3000",
+      PUBLIC_OPERATOR_NAME: "테스트 운영자",
+      PUBLIC_PRIVACY_EMAIL: "privacy@example.com",
+      PUBLIC_POLICY_EFFECTIVE_DATE: "2026-08-07",
     },
   },
 });

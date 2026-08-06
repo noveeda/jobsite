@@ -34,6 +34,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_consents: {
+        Row: {
+          accepted_at: string
+          id: string
+          privacy_version: string
+          terms_version: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string
+          id?: string
+          privacy_version: string
+          terms_version: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string
+          id?: string
+          privacy_version?: string
+          terms_version?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       duplicate_groups: {
         Row: {
           created_at: string
@@ -313,6 +337,30 @@ export type Database = {
           },
         ]
       }
+      request_usage: {
+        Row: {
+          action: Database["public"]["Enums"]["rate_limit_action"]
+          bucket_start: string
+          request_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["rate_limit_action"]
+          bucket_start: string
+          request_count: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["rate_limit_action"]
+          bucket_start?: string
+          request_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       source_checks: {
         Row: {
           checked_at: string
@@ -360,6 +408,18 @@ export type Database = {
         Args: { target_device: string; target_payload: Json }
         Returns: Json
       }
+      consume_rate_limit: {
+        Args: {
+          target_action: Database["public"]["Enums"]["rate_limit_action"]
+        }
+        Returns: {
+          allowed: boolean
+          limit_value: number
+          remaining: number
+          reset_at: string
+          retry_after_seconds: number
+        }[]
+      }
       decide_duplicate: {
         Args: {
           target_decision: Database["public"]["Enums"]["duplicate_decision"]
@@ -372,6 +432,10 @@ export type Database = {
         Returns: undefined
       }
       preview_backup_restore: { Args: { target_payload: Json }; Returns: Json }
+      preview_backup_restore_unchecked: {
+        Args: { target_payload: Json }
+        Returns: Json
+      }
       record_source_refresh: {
         Args: {
           target_error_code: string
@@ -415,6 +479,14 @@ export type Database = {
       connector_mode: "manual" | "approved_api"
       deadline_kind: "fixed" | "rolling" | "until_hired" | "unknown"
       duplicate_decision: "suggested" | "confirmed" | "rejected"
+      rate_limit_action:
+        | "source_preview"
+        | "source_refresh"
+        | "import_validate"
+        | "import_commit"
+        | "consent_write"
+        | "account_delete"
+        | "mutation_write"
       source_provider: "manual" | "saramin" | "jobkorea" | "other"
       source_status:
         | "active"
@@ -565,6 +637,15 @@ export const Constants = {
       connector_mode: ["manual", "approved_api"],
       deadline_kind: ["fixed", "rolling", "until_hired", "unknown"],
       duplicate_decision: ["suggested", "confirmed", "rejected"],
+      rate_limit_action: [
+        "source_preview",
+        "source_refresh",
+        "import_validate",
+        "import_commit",
+        "consent_write",
+        "account_delete",
+        "mutation_write",
+      ],
       source_provider: ["manual", "saramin", "jobkorea", "other"],
       source_status: [
         "active",

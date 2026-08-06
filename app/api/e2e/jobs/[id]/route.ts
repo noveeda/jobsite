@@ -1,9 +1,10 @@
+import { isE2EBypass } from "@/lib/environment";
 import { NextResponse } from "next/server";
 import { applicationStatusSchema } from "@/lib/validation/jobs";
 import { deleteTestJob, getTestJob, resetTestJob, restoreTestJob, updateTestJob } from "@/lib/e2e/job-store";
 
 function disabled() {
-  return process.env.E2E_BYPASS_AUTH !== "true";
+  return !isE2EBypass();
 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
