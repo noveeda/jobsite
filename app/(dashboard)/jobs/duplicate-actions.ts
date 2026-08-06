@@ -1,0 +1,2 @@
+"use server"; import {revalidatePath} from "next/cache"; import {createClient} from "@/lib/supabase/server"; import {requireUser} from "@/lib/auth";
+export async function decideDuplicate(formData:FormData){await requireUser();const pairId=String(formData.get("pairId"));const decision=String(formData.get("decision")) as "confirmed"|"rejected";const supabase=await createClient();const{error}=await supabase.rpc("decide_duplicate",{target_pair_id:pairId,target_decision:decision});if(error)throw new Error("중복 판단을 저장하지 못했습니다.");revalidatePath("/jobs");}

@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  ubuntu-node-24:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SARAMIN_CONNECTOR_ENABLED: "false"
+      JOBKOREA_CONNECTOR_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx supabase start
+      - run: npx supabase db reset
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:unit
+      - run: npm run build
+      - run: npx supabase test db
+      - run: npm run test:e2e
+      - if: always()
+        run: npx supabase stop --no-backup

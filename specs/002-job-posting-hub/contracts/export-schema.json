@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://job-hub.local/schemas/export-v1.json",
+  "title": "Job Hub Export v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generatedAt", "jobs", "sources", "duplicatePairs", "revisions"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "jobs": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/$defs/job" }
+    },
+    "sources": {
+      "type": "array",
+      "maxItems": 20000,
+      "items": { "$ref": "#/$defs/source" }
+    },
+    "duplicatePairs": {
+      "type": "array",
+      "maxItems": 20000,
+      "items": { "$ref": "#/$defs/duplicatePair" }
+    },
+    "revisions": {
+      "type": "array",
+      "maxItems": 100000,
+      "items": { "$ref": "#/$defs/revision" }
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "provenanceEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origin"],
+      "properties": {
+        "origin": {
+          "enum": ["source", "normalized", "user", "missing", "not_applicable", "failed"]
+        },
+        "sourceId": {
+          "anyOf": [
+            { "$ref": "#/$defs/uuid" },
+            { "type": "null" }
+          ]
+        },
+        "observedAt": {
+          "anyOf": [
+            { "type": "string", "format": "date-time" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "job": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "title", "companyName", "deadlineKind", "applicationStatus",
+        "fieldProvenance", "createdAt", "updatedAt"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "companyName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "roleName": { "type": ["string", "null"], "maxLength": 200 },
+        "summary": { "type": ["string", "null"], "maxLength": 1000 },
+        "responsibilities": { "type": "array", "items": { "type": "string", "maxLength": 500 } },
+        "qualifications": { "type": "array", "items": { "type": "string", "maxLength": 500 } },
+        "preferredQualifications": { "type": "array", "items": { "type": "string", "maxLength": 500 } },
+        "careerMinYears": { "type": ["integer", "null"], "minimum": 0, "maximum": 80 },
+        "careerMaxYears": { "type": ["integer", "null"], "minimum": 0, "maximum": 80 },
+        "educationText": { "type": ["string", "null"], "maxLength": 100 },
+        "employmentTypes": { "type": "array", "items": { "type": "string", "maxLength": 100 } },
+        "locations": { "type": "array", "items": { "type": "string", "maxLength": 200 } },
+        "salaryText": { "type": ["string", "null"], "maxLength": 200 },
+        "skills": { "type": "array", "items": { "type": "string", "maxLength": 100 } },
+        "postedAt": { "type": ["string", "null"], "format": "date-time" },
+        "deadlineAt": { "type": ["string", "null"], "format": "date-time" },
+        "deadlineKind": { "enum": ["fixed", "rolling", "until_hired", "unknown"] },
+        "applicationStatus": {
+          "enum": ["unreviewed", "interested", "planned", "applied", "interviewing", "accepted", "rejected", "excluded"]
+        },
+        "memo": { "type": "string", "maxLength": 20000 },
+        "nextActionAt": { "type": ["string", "null"], "format": "date-time" },
+        "duplicateGroupId": {
+          "anyOf": [
+            { "$ref": "#/$defs/uuid" },
+            { "type": "null" }
+          ]
+        },
+        "fieldProvenance": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/provenanceEntry" }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "jobId", "provider", "connectorMode", "originalUrl", "status", "firstObservedAt"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "jobId": { "$ref": "#/$defs/uuid" },
+        "provider": { "enum": ["manual", "saramin", "jobkorea", "other"] },
+        "connectorMode": { "enum": ["manual", "approved_api"] },
+        "externalId": { "type": ["string", "null"], "maxLength": 200 },
+        "originalUrl": { "type": "string", "format": "uri", "maxLength": 2048 },
+        "status": { "enum": ["active", "closed", "unreachable", "unsupported", "unknown"] },
+        "firstObservedAt": { "type": "string", "format": "date-time" },
+        "lastCheckedAt": { "type": ["string", "null"], "format": "date-time" },
+        "lastSuccessAt": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "duplicatePair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "leftJobId", "rightJobId", "score", "reasons", "decision", "createdAt"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "leftJobId": { "$ref": "#/$defs/uuid" },
+        "rightJobId": { "$ref": "#/$defs/uuid" },
+        "score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "reasons": { "type": "object" },
+        "decision": { "enum": ["suggested", "confirmed", "rejected"] },
+        "decidedAt": { "type": ["string", "null"], "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "revision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "jobId", "snapshot", "changedAt", "deviceId", "changeKind"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "jobId": { "$ref": "#/$defs/uuid" },
+        "snapshot": { "type": "object" },
+        "changedAt": { "type": "string", "format": "date-time" },
+        "deviceId": { "$ref": "#/$defs/uuid" },
+        "changeKind": { "enum": ["update", "delete", "restore", "import"] },
+        "restoredFromRevisionId": {
+          "anyOf": [
+            { "$ref": "#/$defs/uuid" },
+            { "type": "null" }
+          ]
+        }
+      }
+    }
+  }
+}

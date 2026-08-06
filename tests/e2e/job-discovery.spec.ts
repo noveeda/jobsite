@@ -1,0 +1,2 @@
+import {expect,test} from "@playwright/test";
+test("searches and resets a 100-job list",async({page})=>{await page.goto("/jobs"); await expect(page.getByText("99개의 공고")).toBeVisible(); await page.getByLabel("검색").fill("테스트 개발자 42"); await page.getByRole("button",{name:"적용"}).click(); await expect(page.getByRole("heading",{name:"테스트 개발자 42"})).toBeVisible(); await page.getByRole("link",{name:"초기화"}).click(); await expect(page.getByText("99개의 공고")).toBeVisible();});
