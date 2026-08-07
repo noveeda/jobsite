@@ -62,7 +62,7 @@
 > 테스트를 먼저 작성하고 구현 전 실패를 확인한다.
 
 - [x] T014 [P] [US1] Write failing unit tests for current policy version comparison and complete consent detection in `tests/unit/consent.test.ts`
-- [ ] T015 [P] [US1] Write failing E2E tests for public legal routes, unchecked submission rejection, consent persistence, dashboard gating, reconnect retry, and forced re-consent after a version change in `tests/e2e/legal-consent.spec.ts`
+- [x] T015 [P] [US1] Write failing E2E tests for public legal routes, unchecked submission rejection, consent persistence, dashboard gating, reconnect retry, and forced re-consent after a version change in `tests/e2e/legal-consent.spec.ts`
 - [x] T016 [P] [US1] Write failing accessibility tests for legal-page landmarks, login consent names, skip navigation, keyboard order, and serious or critical axe violations in `tests/e2e/accessibility.spec.ts`
 
 ### Implementation for User Story 1
@@ -94,7 +94,7 @@
 
 - [x] T027 [P] [US2] Write failing unit tests for exact confirmation normalization, authenticated-user binding, idempotent repeated deletion, and sanitized admin failures in `tests/unit/account-deletion.test.ts`
 - [x] T028 [P] [US2] Write failing pgTAP tests proving deletion of an auth user cascades through jobs, sources, source checks, duplicate groups, duplicate pairs, revisions, consents, and request usage without touching a second owner in `supabase/tests/account_deletion.test.sql`
-- [ ] T029 [P] [US2] Write failing E2E tests for export-before-delete, incorrect confirmation preservation, destructive warning, successful sign-out redirect, double submission, failure retry, and keyboard-accessible confirmation in `tests/e2e/account-deletion.spec.ts`
+- [x] T029 [P] [US2] Write failing E2E tests for export-before-delete, incorrect confirmation preservation, destructive warning, successful sign-out redirect, double submission, failure retry, and keyboard-accessible confirmation in `tests/e2e/account-deletion.spec.ts`
 
 ### Implementation for User Story 2
 
@@ -121,7 +121,7 @@
 - [x] T035 [P] [US3] Write failing route tests for a two-second health deadline, ready and degraded status codes, database reachability, and absence of configuration values in `tests/unit/health-route.test.ts`
 - [x] T036 [P] [US3] Write failing integration tests for atomic per-user limits, operation isolation, exact `429` and `Retry-After`, 100-request enforcement, and fail-closed storage errors in `tests/unit/rate-limit-integration.test.ts`
 - [x] T037 [P] [US3] Write failing tests for clickjacking, MIME sniffing, referrer, permissions, CSP, cache, and request-ID headers without exposing server-only values in `tests/unit/security-headers.test.ts`
-- [ ] T038 [P] [US3] Write failing E2E tests proving preview, refresh, import commit, account deletion, and write actions enforce scoped limits while preserving existing user records after rejection in `tests/e2e/operational-safety.spec.ts`
+- [x] T038 [P] [US3] Write failing E2E tests proving preview, refresh, import commit, account deletion, and write actions enforce scoped limits while preserving existing user records after rejection in `tests/e2e/operational-safety.spec.ts`
 - [x] T039 [P] [US3] Write a failing canary test that injects representative keys, bearer tokens, cookies, memo, and job body text and asserts none appear in captured logs or error responses in `tests/unit/secret-leakage.test.ts`
 
 ### Implementation for User Story 3

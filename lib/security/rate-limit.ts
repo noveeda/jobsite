@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
-import { isE2EBypass } from "@/lib/environment";
+import { isE2EBypass, isE2ERateLimitTestSupport } from "@/lib/environment";
+import { getE2ERateLimit } from "@/lib/e2e/rate-limit-store";
 
 export type RateLimitAction = Database["public"]["Enums"]["rate_limit_action"];
 export type RateLimitResult =
@@ -11,6 +12,10 @@ export async function consumeRateLimit(
   client: SupabaseClient<Database>,
   action: RateLimitAction,
 ): Promise<RateLimitResult> {
+  if (isE2ERateLimitTestSupport()) {
+    const fixture = getE2ERateLimit(action);
+    if (fixture) return fixture;
+  }
   if (isE2EBypass()) return { allowed: true, remaining: Number.MAX_SAFE_INTEGER, resetAt: new Date(0).toISOString() };
   const { data, error } = await client.rpc("consume_rate_limit", { target_action: action });
   const decision = data?.[0];

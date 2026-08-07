@@ -18,10 +18,10 @@
 | Item | Result | Evidence |
 |---|---|---|
 | Branch | OBSERVED | codex/initial-implementation |
-| HEAD | OBSERVED | 9b6959fbdaea7c9688c35c74f142ad1a7c6715cc |
+| HEAD | OBSERVED | 6ef01104c15913333284908c62f2acf69706aa01 |
 | Beta commit | NOT AVAILABLE | Current 003 implementation and operations files are uncommitted; HEAD does not identify this beta code |
-| Task completion | NOT COMPLETE | tasks.md currently has 0 completed and 66 unchecked tasks |
-| Ubuntu beta CI | NOT AVAILABLE | No committed beta SHA, Actions run URL, or Ubuntu result exists for the current worktree |
+| Task completion | NOT COMPLETE | tasks.md has 62 completed and 4 unchecked tasks; T015, T029 and T038 are complete, while T062, T063, T064 and T066 remain open |
+| Ubuntu beta CI | PARTIAL | A local Debian/Node 24 Docker run passed verify, pgTAP and the final full Chromium suite (29/29), but no exact GitHub Actions run URL or committed-beta CI result exists; T062 remains open |
 | Provider mode in repository defaults | VERIFIED | SARAMIN_CONNECTOR_ENABLED=false and JOBKOREA_CONNECTOR_ENABLED=false |
 | Production credentials | NOT VERIFIED | No staging/production Supabase, Google OAuth, Vercel or provider credential evidence was supplied to this validation run |
 
@@ -33,19 +33,35 @@ Commands were executed in the current uncommitted worktree on 2026-08-07 with bo
 
 | Gate | Result | Direct result |
 |---|---|---|
-| npm run verify:beta | PASS | Complete public-beta suite finished in 43.8 seconds |
+| npm run verify:beta | PASS | Full Windows beta verification completed; lint, typecheck, unit, production build, pgTAP and Chromium E2E gates passed |
 | npm run lint | PASS | ESLint exited 0 |
 | npm run typecheck | PASS | tsc --noEmit exited 0 |
-| npm run test:unit | PASS | Vitest: 19 files, 86 tests passed |
+| npm run test:unit | PASS | Vitest: 20 files, 88 tests passed |
 | npm run build | PASS | Next.js 16.3.0 production build completed with deterministic CI/local configuration |
 | npx supabase test db | PASS | pgTAP: 10 files, 114 tests passed |
-| npm run test:e2e | PASS | Playwright Chromium: 24 of 24 tests passed |
+| npm run test:e2e | PASS | Playwright Chromium: 29 of 29 tests passed; the Realtime convergence case required one retry after an initial 10-second timeout |
 | Accessibility coverage | PASS | Nine public/private routes audited; serious and critical axe violations: 0 |
 | git diff --check | PASS | No whitespace errors |
 | Representative tracked-file secret pattern scan | PASS | 0 matches; this is not a production credential or captured-log scan |
 
 The build and tests used deterministic local Supabase data and disabled provider connectors. They did not use or prove production credentials, real Google OAuth, a real Saramin/JobKorea call, or a deployed Vercel environment.
-## 4. Prior 002 regression baseline
+
+## 4. Local Linux compatibility evidence
+
+A Debian container using Node.js 24 exercised the current uncommitted worktree. This is useful Linux compatibility evidence, but it is not the Ubuntu GitHub Actions evidence required by T062.
+
+| Gate | Result | Direct result and limitation |
+|---|---|---|
+| npm run verify | PASS | Debian/Node 24 lint, typecheck, 88 unit tests and production build passed |
+| pg_prove | PASS | 114 pgTAP assertions passed |
+| First full Playwright run | FAIL | 28 passed and 1 failed because a cross-device test hard-coded 127.0.0.1 instead of using the configured environment |
+| Targeted cross-device rerun after configuration fix | PASS with retry | Diagnostic rerun: three tests completed, 2 passed and 1 flaky; the flaky case first exceeded the 10-second Realtime convergence deadline, then passed on retry |
+| Final full Playwright rerun | PASS | npm run test:e2e completed 29/29 Chromium tests in 36.9 seconds with exit code 0 in the same Debian container |
+| Ubuntu GitHub Actions | NOT VERIFIED | Exact run URL, committed SHA, Ubuntu job result and case-sensitive path evidence are absent; T062 remains open |
+
+The final local Debian full suite is green. The earlier 28/1 result and targeted retry remain diagnostic history, not the current outcome. This still does not close SC-006 or T062 because it is a local Debian container result, not an exact Ubuntu GitHub Actions run for a committed beta SHA.
+
+## 5. Prior 002 regression baseline
 
 [002 validation.md](../002-job-posting-hub/validation.md) records the pre-beta implementation baseline:
 
@@ -56,7 +72,7 @@ The build and tests used deterministic local Supabase data and disabled provider
 
 These results predate feature 003 and do not cover new consent, account deletion, durable rate limits, security headers, health, legal pages, production environment validation or operational drills. They cannot close T061–T066.
 
-## 5. Artifact evidence
+## 6. Artifact evidence
 
 The following artifacts were inspected and exist in the current worktree.
 
@@ -71,7 +87,7 @@ The following artifacts were inspected and exist in the current worktree.
 - Provider attribution component and related unit tests
 - Unit tests for environment, consent, deletion, health, rate limits, request security, logs, headers and attribution
 
-The complete Windows result proves the current local database policies, 86 unit tests, production build, 24 fixture-based browser journeys and nine-route axe audit pass. It does not prove actual Auth administration, Vercel behavior, provider credentials or staging integrations.
+The complete Windows result proves the current local database policies, 88 unit tests, production build, 29 fixture-based browser journeys and nine-route axe audit pass. It does not prove actual Auth administration, Vercel behavior, provider credentials or staging integrations.
 
 ### Operations artifacts
 
@@ -83,7 +99,7 @@ The complete Windows result proves the current local database policies, 86 unit 
 
 Document existence verifies FR-011's procedures are written. It does not verify that a real operator executed them successfully.
 
-## 6. Requirement audit
+## 7. Requirement audit
 
 Status meanings:
 
@@ -115,7 +131,7 @@ Status meanings:
 
 FR-001–FR-010, DT-001–DT-004 and UR-001–UR-003 are not all PASS. T066 cannot be closed.
 
-## 7. Success criteria audit
+## 8. Success criteria audit
 
 | Criterion | Status | Missing direct evidence |
 |---|---|---|
@@ -124,11 +140,11 @@ FR-001–FR-010, DT-001–DT-004 and UR-001–UR-003 are not all PASS. T066 cann
 | SC-003 95% health responses within 2 seconds | NOT VERIFIED | Deployed repeated measurements and database probe behavior |
 | SC-004 100-request limit and account isolation | PARTIAL | Local rate-limit unit, pgTAP and E2E pass; deployed concurrency/100-request evidence is not separately recorded |
 | SC-005 no registered secret values in response/log | PARTIAL | Canary unit tests and representative tracked-file scan pass; build output, HTTP and captured platform logs remain unverified |
-| SC-006 Windows and Ubuntu critical journeys | PARTIAL | Windows full suite passes; current Ubuntu CI and staging evidence are absent |
+| SC-006 Windows and Ubuntu critical journeys | PARTIAL | Windows Chromium 29/29 passes. Local Debian/Node 24 verify, pgTAP and the final full Chromium rerun pass 29/29 in 36.9 seconds with exit 0. Earlier 28/1 and targeted retry results are retained as diagnostic history. Exact Ubuntu GitHub Actions evidence is still absent |
 
 No success criterion is closed for public beta.
 
-## 8. Credential and staging-only gates
+## 9. Credential and staging-only gates
 
 The following cannot be validated from source code or fixture mode and remain mandatory.
 
@@ -146,9 +162,9 @@ The following cannot be validated from source code or fixture mode and remain ma
 
 No credential value should be added to this file when those checks are performed. Record only environment, evidence ID, timestamp, request ID, SHA and PASS/FAIL.
 
-## 9. Required next evidence
+## 10. Required next evidence
 
-1. Commit the current beta work so one exact SHA identifies the validated implementation.
+1. Commit the current beta work so one exact SHA identifies the validated implementation; the current evidence is for an uncommitted worktree at observed HEAD 6ef01104c15913333284908c62f2acf69706aa01.
 2. Run that SHA through the Ubuntu Node 24 CI workflow and record the Actions URL and job result.
 3. Provision actual staging Supabase, Vercel and Google OAuth configuration and verify E2E_BYPASS_AUTH is absent.
 4. Execute real Google login, consent, save, export, rate-limit, attribution, account deletion and failed re-login.
@@ -156,8 +172,8 @@ No credential value should be added to this file when those checks are performed
 6. Perform restore-to-empty-project and previous-deployment rollback drills with ownership/count evidence.
 7. Complete final operator identity, privacy contact, policy date and legal review.
 8. Re-audit every requirement and success criterion, then close the launch checklist.
-## 10. Final decision
+## 11. Final decision
 
 **NO-GO**.
 
-Reason: the Windows public-beta suite is fully green, but the validated work is still uncommitted and has no Ubuntu CI result. Actual Google OAuth, staging account deletion and failed re-login, restore-to-empty, rollback, deployed canary scans and final legal review remain unverified external gates.
+Reason: the Windows public-beta suite is fully green, and local Debian/Node 24 verify, pgTAP and the final full Chromium suite are green (29/29, 36.9 seconds, exit 0). The earlier Linux 28/1 failure and targeted retry are retained as diagnostic history. The validated work is still uncommitted and has no exact Ubuntu GitHub Actions run URL. Actual Google OAuth, staging account deletion and failed re-login, restore-to-empty, rollback, deployed canary scans and final legal review remain unverified external gates.

@@ -13,15 +13,19 @@
 - [x] production에서 E2E_BYPASS_AUTH=true를 거절하는 코드와 단위 테스트가 있다.
 - [x] repository 기본 connector 설정은 SARAMIN_CONNECTOR_ENABLED=false와 JOBKOREA_CONNECTOR_ENABLED=false다.
 - [x] 2026-08-07 Windows에서 npm run typecheck가 통과했다.
-- [x] 2026-08-07 Windows에서 npm run test:unit가 19개 파일, 86개 테스트로 통과했다.
+- [x] 2026-08-07 Windows에서 npm run test:unit가 20개 파일, 88개 테스트로 통과했다.
 - [x] 2026-08-07 Windows에서 npm run lint가 통과했다.
 - [x] 2026-08-07 Windows에서 production build가 통과했다.
-- [x] npm run verify:beta 전체가 43.8초에 통과했고 git diff --check도 통과했다.
+- [x] Windows에서 npm run verify:beta 전체와 git diff --check가 통과했다.
 - [x] 현재 beta migration을 적용한 pgTAP 10개 파일, 114개 테스트가 통과했다.
-- [x] 현재 beta Playwright Chromium 24개 테스트가 모두 통과했다.
+- [x] 현재 beta Playwright Chromium 29개 테스트가 모두 통과했다. Realtime convergence 테스트는 최초 10초 timeout 후 재시도에서 통과했다.
 - [x] login, consent, terms, privacy, sources, jobs, new job, detail, settings 9개 route의 axe serious/critical 위반이 0건이다.
-- [ ] 같은 beta commit의 Ubuntu Node 24 CI가 통과하고 commit SHA, Actions run URL, job 결과를 validation.md에 기록한다.
-- [ ] tasks.md의 T001–T066이 직접 증거와 대조된 뒤 모두 완료 표시된다.
+- [x] T015 consent E2E, T029 account deletion E2E, T038 operational safety E2E가 현재 Windows 전체 suite에서 통과했다.
+- [x] 로컬 Debian/Node 24에서 npm run verify(88 unit 포함), production build와 pg_prove 114개 assertion이 통과했다.
+- [x] 같은 Debian 컨테이너의 수정 후 최종 npm run test:e2e가 Chromium 29/29, 36.9초, exit 0으로 통과했다.
+- [x] Linux 최초 28 pass/1 fail과 환경 기반 host 수정 뒤 targeted 2 pass/1 retry-only flaky는 진단 이력으로 validation.md에 남겼으며, 현재 최종 전체 상태는 29/29 PASS다.
+- [ ] 같은 beta commit의 Ubuntu Node 24 GitHub Actions가 통과하고 commit SHA, 정확한 Actions run URL, job 결과와 Linux 대소문자 경로 증거를 validation.md에 기록한다. 로컬 Debian/Node 24 결과만으로는 T062를 닫지 않는다.
+- [ ] tasks.md의 T001–T066이 직접 증거와 대조된 뒤 모두 완료 표시된다. 현재 T015, T029, T038을 포함한 62개는 완료됐고 T062, T063, T064, T066은 미완료다.
 
 ## 2. 운영자와 법적 고지
 
@@ -82,7 +86,7 @@
 - [ ] production의 JOBKOREA_CONNECTOR_ENABLED 실제 값이 출시 결정에 기록돼 있다.
 - [ ] 잡코리아 connector를 켠다면 승인, 발급 endpoint, 등록 IP 조건, 표시 조건을 직접 확인했다.
 - [ ] provider 장애 시 connector를 끄고 기존 공고·메모·상태·일정·원문 링크가 유지되는 staging 증거가 있다.
-- [x] Windows 전체 검증은 두 connector를 비활성화하고 fixture만 사용했다. Ubuntu CI의 동일 조건은 실행 후 별도 확인한다.
+- [x] Windows 전체 검증은 두 connector를 비활성화하고 fixture만 사용했다. 로컬 Debian/Node 24 검증도 통과했지만, Ubuntu GitHub Actions의 동일 조건과 정확한 run URL은 아직 확인되지 않았다.
 
 ## 7. Staging 사용자 여정
 

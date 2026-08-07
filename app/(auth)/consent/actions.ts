@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { isE2EBypass } from "@/lib/environment";
+import { saveE2EConsent } from "@/lib/e2e/consent-store";
 import { CURRENT_PRIVACY_VERSION, CURRENT_TERMS_VERSION } from "@/lib/legal/policy";
 import { consumeRateLimit } from "@/lib/security/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -40,7 +41,15 @@ export async function acceptCurrentPolicies(
 
   const user = await requireUser();
 
-  if (!isE2EBypass()) {
+  if (isE2EBypass()) {
+    if (!saveE2EConsent()) {
+      return {
+        ok: false,
+        code: "SAVE_FAILED",
+        message: "동의를 저장하지 못했습니다. 연결을 확인하고 다시 시도해 주세요.",
+      };
+    }
+  } else {
     const authenticatedClient = await createClient();
     const rateLimit = await consumeRateLimit(authenticatedClient, "consent_write");
     if (!rateLimit.allowed) {

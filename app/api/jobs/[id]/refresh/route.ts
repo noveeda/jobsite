@@ -1,4 +1,4 @@
-import { isE2EBypass } from "@/lib/environment";
+import { isE2EBypass, isE2ERateLimitTestSupport } from "@/lib/environment";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { refreshSource, type RefreshJob, type RefreshSourceInput } from "@/lib/sources/connector";
@@ -30,6 +30,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const id = requestId(request.headers.get("x-request-id"));
   const user = await requireUser();
   const { id: jobId } = await params;
+  if (isE2ERateLimitTestSupport()) {
+    const limit = await consumeRateLimit(await createClient(), "source_refresh");
+    if (!limit.allowed) {
+      logSafeEvent({ requestId: id, category: "source_refresh", outcome: "denied", errorCode: limit.unavailable ? "RATE_LIMIT_UNAVAILABLE" : "RATE_LIMITED" });
+      return NextResponse.json(
+        { code: limit.unavailable ? "RATE_LIMIT_UNAVAILABLE" : "RATE_LIMITED", message: "요청이 많습니다. 저장된 공고는 변경되지 않았습니다.", requestId: id },
+        { status: limit.unavailable ? 503 : 429, headers: { "retry-after": String(limit.retryAfter) } },
+      );
+    }
+  }
   if (isE2EBypass()) return NextResponse.json(await testResponse(jobId));
 
   let sourceId = "";

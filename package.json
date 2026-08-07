@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:operational": "playwright test --config playwright.operational.config.ts",
     "verify": "npm run lint && npm run typecheck && npm run test:unit && npm run build",
     "test:a11y": "playwright test tests/e2e/accessibility.spec.ts",
     "verify:beta": "npm run verify && npx supabase test db && npm run test:e2e"

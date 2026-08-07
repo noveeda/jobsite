@@ -11,6 +11,10 @@ export function isE2EBypass(environment: EnvironmentSource = process.env) {
   return environment.NODE_ENV !== "production" && environment.E2E_BYPASS_AUTH === "true";
 }
 
+export function isE2ERateLimitTestSupport(environment: EnvironmentSource = process.env) {
+  return isE2EBypass(environment) && environment.E2E_RATE_LIMIT_TEST_SUPPORT === "true";
+}
+
 export function validateServerEnvironment(environment: EnvironmentSource = process.env) {
   const required: Record<string, z.ZodType<string>> = {
     NEXT_PUBLIC_SUPABASE_URL: url,
@@ -34,6 +38,9 @@ export function validateServerEnvironment(environment: EnvironmentSource = proce
   }
   if (environment.NODE_ENV === "production" && environment.E2E_BYPASS_AUTH === "true") {
     missing.push("E2E_BYPASS_AUTH must be disabled");
+  }
+  if (environment.NODE_ENV === "production" && environment.E2E_RATE_LIMIT_TEST_SUPPORT === "true") {
+    missing.push("E2E_RATE_LIMIT_TEST_SUPPORT must be disabled");
   }
   if (missing.length) throw new Error(`Invalid server environment: ${missing.sort().join(", ")}`);
 

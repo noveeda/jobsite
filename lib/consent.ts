@@ -1,8 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isE2EBypass } from "@/lib/environment";
+import { getE2EConsentState } from "@/lib/e2e/consent-store";
 import {
-  CURRENT_PRIVACY_VERSION,
-  CURRENT_TERMS_VERSION,
   consentStatus,
   type ConsentRecord,
   type ConsentStatus,
@@ -17,12 +16,21 @@ export type ConsentLookupResult = Readonly<{
 }>;
 
 function e2eConsent(): ConsentLookupResult {
-  const record: ConsentRecord = {
-    termsVersion: CURRENT_TERMS_VERSION,
-    privacyVersion: CURRENT_PRIVACY_VERSION,
-    agreedAt: "2026-08-07T00:00:00.000Z",
+  const { record, currentTermsVersion, currentPrivacyVersion } = getE2EConsentState();
+  const hasAgreementTime = typeof record?.agreedAt === "string"
+    && Number.isFinite(Date.parse(record.agreedAt));
+  const termsCurrent = record?.termsVersion === currentTermsVersion;
+  const privacyCurrent = record?.privacyVersion === currentPrivacyVersion;
+  return {
+    record,
+    status: {
+      termsCurrent,
+      privacyCurrent,
+      hasAgreementTime,
+      complete: termsCurrent && privacyCurrent && hasAgreementTime,
+    },
+    unavailable: false,
   };
-  return { record, status: consentStatus(record), unavailable: false };
 }
 
 export async function getLatestConsent(
