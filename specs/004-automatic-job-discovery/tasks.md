@@ -16,7 +16,7 @@ description: "자동 통합 채용공고 탐색의 의존성 순서 작업 목�
 
 **Purpose**: 원격과 저장소의 migration 이력을 안전하게 맞추고 기능 플래그·fixture 기반을 준비한다.
 
-- [ ] T001 Verify and commit the identical rename from supabase/migrations/006_job_history.sql to supabase/migrations/0060_job_history.sql as a clean migration-history checkpoint, confirm linked dry-run has zero pending migrations without linked repair, and record evidence in specs/004-automatic-job-discovery/validation.md before T006
+- [X] T001 Verify and commit the identical rename from supabase/migrations/006_job_history.sql to supabase/migrations/0060_job_history.sql as a clean migration-history checkpoint, confirm linked dry-run has zero pending migrations without linked repair, and record evidence in specs/004-automatic-job-discovery/validation.md before T006
 - [ ] T002 Reset the disposable local Supabase database against supabase/migrations/0060_job_history.sql and record local migration-list and pgTAP baseline in specs/004-automatic-job-discovery/validation.md
 - [ ] T003 [P] Add AUTOMATIC_DISCOVERY_ENABLED, COLLECTOR_ENABLED, CRON_SECRET, OPERATOR_USER_IDS, and canonical SARAMIN_API_KEY documentation to .env.example and validation to lib/environment.ts
 - [ ] T004 [P] Add two cursor-style fixture providers and deterministic catalog fixtures in lib/sources/fixtures/catalog.ts
