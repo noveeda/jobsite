@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jobsite-rust.vercel.app/schemas/backup-v2.json",
+  "title": "Job Posting Hub Backup v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "exportedAt", "legacy", "personalStates", "duplicateDecisions", "manualLinks"],
+  "properties": {
+    "version": { "const": 2 },
+    "exportedAt": { "type": "string", "format": "date-time" },
+    "legacy": {
+      "description": "Existing v1-compatible payload",
+      "type": "object"
+    },
+    "personalStates": {
+      "type": "array",
+      "maxItems": 20000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sourceRef", "saved", "excluded", "applicationStatus", "memo"],
+        "properties": {
+          "sourceRef": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["provider", "externalId", "originalUrl"],
+            "properties": {
+              "provider": { "type": "string", "minLength": 1, "maxLength": 50 },
+              "externalId": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "originalUrl": { "type": "string", "format": "uri", "pattern": "^https://" }
+            }
+          },
+          "displaySnapshot": {
+            "type": ["object", "null"],
+            "description": "Only fields allowed by provider retention policy",
+            "additionalProperties": false,
+            "properties": {
+              "title": { "type": "string", "maxLength": 300 },
+              "companyName": { "type": "string", "maxLength": 200 }
+            }
+          },
+          "saved": { "type": "boolean" },
+          "excluded": { "type": "boolean" },
+          "applicationStatus": {
+            "enum": ["unreviewed", "planned", "applied", "interviewing", "offered", "rejected", "withdrawn"]
+          },
+          "memo": { "type": "string", "maxLength": 10000 },
+          "nextActionAt": { "type": ["string", "null"], "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "duplicateDecisions": {
+      "type": "array",
+      "maxItems": 20000,
+      "items": {
+        "type": "object",
+        "required": ["leftSourceRef", "rightSourceRef", "decision"],
+        "properties": {
+          "leftSourceRef": { "type": "object" },
+          "rightSourceRef": { "type": "object" },
+          "decision": { "enum": ["merged", "separate"] },
+          "representativeSourceRef": { "type": ["object", "null"] }
+        }
+      }
+    },
+    "manualLinks": {
+      "type": "array",
+      "maxItems": 20000,
+      "items": {
+        "type": "object",
+        "required": ["legacyJobId", "sourceRef"],
+        "properties": {
+          "legacyJobId": { "type": "string", "format": "uuid" },
+          "sourceRef": { "type": "object" }
+        }
+      }
+    }
+  }
+}
