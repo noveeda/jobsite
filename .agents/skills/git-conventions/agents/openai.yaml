@@ -1,0 +1,4 @@
+interface:
+  display_name: "Git Conventions"
+  short_description: "Automatically checkpoint completed repository work"
+  default_prompt: "Use $git-conventions to complete this task and preserve its Git history automatically."
