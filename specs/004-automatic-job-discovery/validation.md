@@ -34,3 +34,19 @@
 - Vitest: 21 files, 96 tests, all successful
 - TypeScript typecheck: PASS
 - ESLint: PASS
+## T005–T010 — Shared catalog foundation
+
+- Date: 2026-08-08 (Asia/Seoul)
+- Core schema: five additive shared catalog tables with ENABLE/FORCE RLS and default-deny grants
+- Security RPCs: provider-wide lease, atomic quota, allowlisted ingest, provider disable, provenance-aware purge
+- Authenticated visibility: consented catalog read passes without exposing provider operations tables
+- Provider contracts: capabilities, compliance, cursor, normalized posting, provenance, stable retry-safe errors
+- Validation: UTC/HTTPS, Saramin limits, retention allowlist, recursive secret/URL checks, complete matching provenance
+- Generated Supabase types: includes shared tables and service-only RPCs
+- Local reset: PASS
+- pgTAP: 11 files, 148 tests, all successful
+- Vitest unit: 23 files, 116 tests, all successful
+- TypeScript typecheck: PASS
+- ESLint: PASS
+- Production build: PASS
+- External provider calls: none

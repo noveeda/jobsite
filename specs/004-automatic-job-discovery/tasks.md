@@ -31,12 +31,12 @@ description: "자동 통합 채용공고 탐색의 의존성 순서 작업 목�
 
 **⚠️ CRITICAL**: 이 단계가 끝나기 전 사용자 스토리 구현을 시작하지 않는다.
 
-- [ ] T005 [P] Write pgTAP schema, fail-closed RLS/grant, anonymous SELECT denial, operator-table denial, and service-role-only RPC tests for the shared catalog in supabase/tests/automatic_discovery_core.test.sql
-- [ ] T006 Create additive source_providers, canonical_jobs, source_postings, collection_runs, and provider_daily_usage tables plus indexes, ENABLE/FORCE RLS, and default-deny revokes in one transaction in supabase/migrations/20260808000100_automatic_discovery_core.sql
-- [ ] T007 Implement authenticated catalog read policies plus service-role-only claim-run, atomic-quota, idempotent-ingest, provider-disable, and retention-purge RPCs in supabase/migrations/20260808000200_automatic_discovery_security.sql
-- [ ] T008 Regenerate shared catalog and RPC types in lib/supabase/database.types.ts after the foundational migrations
-- [ ] T009 [P] Define provider capabilities, compliance, opaque cursor, normalized posting, and stable error types in lib/sources/provider-adapter.ts
-- [ ] T010 [P] Add Zod validation for provider configuration, collection request, and normalized postings in lib/validation/collection.ts
+- [X] T005 [P] Write pgTAP schema, fail-closed RLS/grant, anonymous SELECT denial, operator-table denial, and service-role-only RPC tests for the shared catalog in supabase/tests/automatic_discovery_core.test.sql
+- [X] T006 Create additive source_providers, canonical_jobs, source_postings, collection_runs, and provider_daily_usage tables plus indexes, ENABLE/FORCE RLS, and default-deny revokes in one transaction in supabase/migrations/20260808000100_automatic_discovery_core.sql
+- [X] T007 Implement authenticated catalog read policies plus service-role-only claim-run, atomic-quota, idempotent-ingest, provider-disable, and retention-purge RPCs in supabase/migrations/20260808000200_automatic_discovery_security.sql
+- [X] T008 Regenerate shared catalog and RPC types in lib/supabase/database.types.ts after the foundational migrations
+- [X] T009 [P] Define provider capabilities, compliance, opaque cursor, normalized posting, and stable error types in lib/sources/provider-adapter.ts
+- [X] T010 [P] Add Zod validation for provider configuration, collection request, and normalized postings in lib/validation/collection.ts
 - [ ] T011 [P] Add secret/URL-query redaction and operator allowlist denial regression tests in tests/unit/collector-secret-leakage.test.ts and tests/unit/operator-sources.test.ts
 - [ ] T012 Implement database-backed run lease and atomic daily quota clients in lib/collection/quota.ts
 - [ ] T013 Implement source fact/provenance normalization without raw-payload persistence in lib/collection/normalize.ts

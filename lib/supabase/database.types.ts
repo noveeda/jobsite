@@ -7,31 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       account_consents: {
@@ -57,6 +32,152 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      canonical_jobs: {
+        Row: {
+          career_max_years: number | null
+          career_min_years: number | null
+          company_name: string
+          created_at: string
+          deadline_at: string | null
+          deadline_kind: string
+          education_text: string | null
+          employment_types: string[]
+          experience_text: string | null
+          field_provenance: Json
+          id: string
+          industry: string | null
+          job_categories: string[]
+          last_observed_at: string
+          lifecycle_status: string
+          locations: string[]
+          posted_at: string | null
+          role_name: string | null
+          salary_text: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          career_max_years?: number | null
+          career_min_years?: number | null
+          company_name: string
+          created_at?: string
+          deadline_at?: string | null
+          deadline_kind?: string
+          education_text?: string | null
+          employment_types?: string[]
+          experience_text?: string | null
+          field_provenance?: Json
+          id?: string
+          industry?: string | null
+          job_categories?: string[]
+          last_observed_at: string
+          lifecycle_status?: string
+          locations?: string[]
+          posted_at?: string | null
+          role_name?: string | null
+          salary_text?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          career_max_years?: number | null
+          career_min_years?: number | null
+          company_name?: string
+          created_at?: string
+          deadline_at?: string | null
+          deadline_kind?: string
+          education_text?: string | null
+          employment_types?: string[]
+          experience_text?: string | null
+          field_provenance?: Json
+          id?: string
+          industry?: string | null
+          job_categories?: string[]
+          last_observed_at?: string
+          lifecycle_status?: string
+          locations?: string[]
+          posted_at?: string | null
+          role_name?: string | null
+          salary_text?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      collection_runs: {
+        Row: {
+          attempt_count: number
+          closed_count: number
+          created_at: string
+          cursor: Json | null
+          error_code: string | null
+          error_summary: string | null
+          fetched_count: number
+          finished_at: string | null
+          id: string
+          lease_until: string | null
+          next_retry_at: string | null
+          provider_code: string
+          quota_used: number
+          run_kind: string
+          schedule_bucket: string
+          snapshot_complete: boolean
+          started_at: string | null
+          status: string
+          upserted_count: number
+        }
+        Insert: {
+          attempt_count?: number
+          closed_count?: number
+          created_at?: string
+          cursor?: Json | null
+          error_code?: string | null
+          error_summary?: string | null
+          fetched_count?: number
+          finished_at?: string | null
+          id?: string
+          lease_until?: string | null
+          next_retry_at?: string | null
+          provider_code: string
+          quota_used?: number
+          run_kind: string
+          schedule_bucket: string
+          snapshot_complete?: boolean
+          started_at?: string | null
+          status?: string
+          upserted_count?: number
+        }
+        Update: {
+          attempt_count?: number
+          closed_count?: number
+          created_at?: string
+          cursor?: Json | null
+          error_code?: string | null
+          error_summary?: string | null
+          fetched_count?: number
+          finished_at?: string | null
+          id?: string
+          lease_until?: string | null
+          next_retry_at?: string | null
+          provider_code?: string
+          quota_used?: number
+          run_kind?: string
+          schedule_bucket?: string
+          snapshot_complete?: boolean
+          started_at?: string | null
+          status?: string
+          upserted_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_runs_provider_code_fkey"
+            columns: ["provider_code"]
+            isOneToOne: false
+            referencedRelation: "source_providers"
+            referencedColumns: ["code"]
+          },
+        ]
       }
       duplicate_groups: {
         Row: {
@@ -337,6 +458,38 @@ export type Database = {
           },
         ]
       }
+      provider_daily_usage: {
+        Row: {
+          provider_code: string
+          reserve_calls: number
+          scheduled_calls: number
+          updated_at: string
+          usage_date: string
+        }
+        Insert: {
+          provider_code: string
+          reserve_calls?: number
+          scheduled_calls?: number
+          updated_at?: string
+          usage_date: string
+        }
+        Update: {
+          provider_code?: string
+          reserve_calls?: number
+          scheduled_calls?: number
+          updated_at?: string
+          usage_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_daily_usage_provider_code_fkey"
+            columns: ["provider_code"]
+            isOneToOne: false
+            referencedRelation: "source_providers"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       request_usage: {
         Row: {
           action: Database["public"]["Enums"]["rate_limit_action"]
@@ -399,14 +552,200 @@ export type Database = {
           },
         ]
       }
+      source_postings: {
+        Row: {
+          canonical_job_id: string
+          content_fingerprint: string
+          created_at: string
+          external_id: string
+          first_observed_at: string
+          id: string
+          last_collection_run_id: string | null
+          last_observed_at: string
+          missing_complete_runs: number
+          normalized_url: string
+          original_url: string
+          provider_code: string
+          source_status: string
+          source_values: Json
+          updated_at: string
+        }
+        Insert: {
+          canonical_job_id: string
+          content_fingerprint: string
+          created_at?: string
+          external_id: string
+          first_observed_at: string
+          id?: string
+          last_collection_run_id?: string | null
+          last_observed_at: string
+          missing_complete_runs?: number
+          normalized_url: string
+          original_url: string
+          provider_code: string
+          source_status?: string
+          source_values?: Json
+          updated_at?: string
+        }
+        Update: {
+          canonical_job_id?: string
+          content_fingerprint?: string
+          created_at?: string
+          external_id?: string
+          first_observed_at?: string
+          id?: string
+          last_collection_run_id?: string | null
+          last_observed_at?: string
+          missing_complete_runs?: number
+          normalized_url?: string
+          original_url?: string
+          provider_code?: string
+          source_status?: string
+          source_values?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "source_postings_canonical_job_id_fkey"
+            columns: ["canonical_job_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "source_postings_last_collection_run_id_fkey"
+            columns: ["last_collection_run_id"]
+            isOneToOne: false
+            referencedRelation: "collection_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "source_postings_provider_code_fkey"
+            columns: ["provider_code"]
+            isOneToOne: false
+            referencedRelation: "source_providers"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      source_providers: {
+        Row: {
+          access_mode: string | null
+          approval_reference: string | null
+          attribution: Json
+          capabilities: Json
+          code: string
+          created_at: string
+          daily_limit: number | null
+          disabled_reason: string | null
+          display_name: string
+          enabled: boolean
+          last_error_code: string | null
+          last_success_at: string | null
+          page_limit: number | null
+          refresh_interval_minutes: number
+          retention_policy: Json
+          terms_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_mode?: string | null
+          approval_reference?: string | null
+          attribution?: Json
+          capabilities?: Json
+          code: string
+          created_at?: string
+          daily_limit?: number | null
+          disabled_reason?: string | null
+          display_name: string
+          enabled?: boolean
+          last_error_code?: string | null
+          last_success_at?: string | null
+          page_limit?: number | null
+          refresh_interval_minutes?: number
+          retention_policy?: Json
+          terms_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_mode?: string | null
+          approval_reference?: string | null
+          attribution?: Json
+          capabilities?: Json
+          code?: string
+          created_at?: string
+          daily_limit?: number | null
+          disabled_reason?: string | null
+          display_name?: string
+          enabled?: boolean
+          last_error_code?: string | null
+          last_success_at?: string | null
+          page_limit?: number | null
+          refresh_interval_minutes?: number
+          retention_policy?: Json
+          terms_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      claim_collection_run: {
+        Args: {
+          target_lease_seconds?: number
+          target_provider_code: string
+          target_run_kind?: string
+          target_schedule_bucket: string
+        }
+        Returns: {
+          attempt_count: number
+          closed_count: number
+          created_at: string
+          cursor: Json | null
+          error_code: string | null
+          error_summary: string | null
+          fetched_count: number
+          finished_at: string | null
+          id: string
+          lease_until: string | null
+          next_retry_at: string | null
+          provider_code: string
+          quota_used: number
+          run_kind: string
+          schedule_bucket: string
+          snapshot_complete: boolean
+          started_at: string | null
+          status: string
+          upserted_count: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "collection_runs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      cleanup_request_usage: { Args: never; Returns: number }
       commit_backup_restore: {
         Args: { target_device: string; target_payload: Json }
         Returns: Json
+      }
+      consume_provider_quota: {
+        Args: {
+          target_amount?: number
+          target_bucket?: string
+          target_provider_code: string
+          target_usage_date?: string
+        }
+        Returns: {
+          allowed: boolean
+          hard_limit: number
+          reserve_calls: number
+          scheduled_calls: number
+        }[]
       }
       consume_rate_limit: {
         Args: {
@@ -431,10 +770,35 @@ export type Database = {
         Args: { target_device: string; target_job_id: string }
         Returns: undefined
       }
+      disable_source_provider: {
+        Args: { target_provider_code: string; target_reason: string }
+        Returns: boolean
+      }
+      ingest_source_postings: {
+        Args: {
+          target_finalize?: boolean
+          target_postings: Json
+          target_provider_code: string
+          target_run_id: string
+          target_snapshot_complete?: boolean
+        }
+        Returns: {
+          closed_count: number
+          upserted_count: number
+        }[]
+      }
+      is_source_provider_enabled: {
+        Args: { target_provider_code: string }
+        Returns: boolean
+      }
       preview_backup_restore: { Args: { target_payload: Json }; Returns: Json }
       preview_backup_restore_unchecked: {
         Args: { target_payload: Json }
         Returns: Json
+      }
+      purge_source_provider_data: {
+        Args: { target_provider_code: string; target_reason: string }
+        Returns: number
       }
       record_source_refresh: {
         Args: {
@@ -619,9 +983,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       application_status: [
