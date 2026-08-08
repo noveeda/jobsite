@@ -2,7 +2,13 @@ import { z } from "zod";
 
 import { personalApplicationStatusSchema } from "@/lib/validation/personal-job-state";
 
-const httpsUrl = z.string().url().refine((value) => new URL(value).protocol === "https:");
+const httpsUrl = z.string().url().refine((value) => {
+  const parsed = new URL(value);
+  return parsed.protocol === "https:"
+    && parsed.hostname.length > 0
+    && parsed.username.length === 0
+    && parsed.password.length === 0;
+}, "Expected a credential-free HTTPS URL");
 
 const catalogSourceSchema = z.object({
   provider: z.string().regex(/^[a-z][a-z0-9_-]{1,39}$/),
@@ -83,6 +89,48 @@ export const catalogJobDetailSchema = catalogDisplayItemSchema.extend({
   }),
 }).nullable();
 
+const catalogDuplicateDetailSourceSchema = z.object({
+  provider: z.string().regex(/^[a-z][a-z0-9_-]{1,39}$/),
+  providerName: z.string().trim().min(1).max(100),
+  originalUrl: httpsUrl,
+  observedAt: z.string().datetime({ offset: true }),
+}).strict();
+
+const catalogDuplicateConflictSchema = z.object({
+  field: z.enum(["deadlineAt", "locations"]),
+  values: z.array(z.object({
+    provider: z.string().regex(/^[a-z][a-z0-9_-]{1,39}$/),
+    observedAt: z.string().datetime({ offset: true }),
+    value: z.string().trim().max(300).nullable(),
+  }).strict()).min(2).max(2),
+}).strict();
+
+const catalogDuplicateCurrentUserSchema = z.object({
+  decision: z.enum(["merged", "separate"]).nullable(),
+  revision: z.number().int().min(0),
+  history: z.array(z.object({
+    action: z.enum(["merge", "separate", "undo"]),
+    createdAt: z.string().datetime({ offset: true }),
+  }).strict()).max(25),
+}).strict();
+
+export const catalogDuplicateDetailSchema = z.object({
+  candidates: z.array(z.object({
+    id: z.string().uuid(),
+    counterpartId: z.string().uuid(),
+    score: z.number().min(0).max(1),
+    reasons: z.array(z.string().regex(/^[a-z][a-z0-9_]{1,39}$/)).min(1).max(20),
+    evidenceRevision: z.number().int().positive(),
+    sources: z.array(catalogDuplicateDetailSourceSchema).length(2),
+    conflicts: z.array(catalogDuplicateConflictSchema).max(2),
+    currentUser: catalogDuplicateCurrentUserSchema,
+    group: z.object({
+      representativeId: z.string().uuid(),
+      memberIds: z.array(z.string().uuid()).min(1).max(25),
+    }).strict(),
+  }).strict()).max(25),
+}).strict();
+
 export const catalogFeedResponseSchema = z.object({
   items: z.array(catalogFeedItemSchema),
   total: z.number().int().min(0),
@@ -116,6 +164,7 @@ export const catalogFeedResponseSchema = z.object({
 
 export type CatalogFeedItem = z.infer<typeof catalogFeedItemSchema>;
 export type CatalogJobDetail = NonNullable<z.infer<typeof catalogJobDetailSchema>>;
+export type CatalogDuplicateDetail = z.infer<typeof catalogDuplicateDetailSchema>;
 export type CatalogFeedResponse = z.infer<typeof catalogFeedResponseSchema>;
 export type CatalogDuplicateCandidate = z.infer<typeof catalogDuplicateCandidateSchema>;
 

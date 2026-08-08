@@ -13,7 +13,7 @@ import { getTestJob } from "@/lib/e2e/job-store";
 import { getE2EPersonalState } from "@/lib/e2e/personal-state";
 import { isE2EBypass } from "@/lib/environment";
 import { createClient } from "@/lib/supabase/server";
-import { catalogJobDetailSchema, type CatalogJobDetail } from "@/lib/validation/feed";
+import { catalogDuplicateDetailSchema, catalogJobDetailSchema, type CatalogJobDetail } from "@/lib/validation/feed";
 
 function CatalogDetail({ job, returnTo }: { job: CatalogJobDetail; returnTo: string }) {
   return (
@@ -110,10 +110,16 @@ export default async function JobDetailPage({ params, searchParams }: { params: 
     );
   }
 
-  const { data, error } = await supabase.rpc("get_catalog_job_detail", { target_id: id });
-  if (error) throw new Error("CATALOG_DETAIL_UNAVAILABLE");
+  const [{ data, error }, { data: duplicateData, error: duplicateError }] = await Promise.all([
+    supabase.rpc("get_catalog_job_detail", { target_id: id }),
+    supabase.rpc("get_catalog_duplicate_detail", { target_id: id }),
+  ]);
+  if (error || duplicateError) throw new Error("CATALOG_DETAIL_UNAVAILABLE");
   const detail = catalogJobDetailSchema.safeParse(data);
   if (!detail.success) throw new Error("CATALOG_DETAIL_INVALID");
+  if (!catalogDuplicateDetailSchema.safeParse(duplicateData).success) {
+    throw new Error("CATALOG_DUPLICATE_DETAIL_INVALID");
+  }
   if (!detail.data) notFound();
   return <CatalogDetail returnTo={returnTo} job={detail.data} />;
 }

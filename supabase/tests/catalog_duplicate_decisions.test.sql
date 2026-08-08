@@ -1,5 +1,5 @@
 begin;
-select plan(17);
+select plan(25);
 
 insert into auth.users(id, aud, role, email)
 values
@@ -82,6 +82,70 @@ select throws_like(
   $$select public.set_catalog_duplicate_decision('40000000-0000-4000-8000-000000000401', 'separate', '50000000-0000-4000-8000-000000000401', 1, '{}'::jsonb)$$,
   '%operation id%',
   'an operation id cannot be reused with a different immutable payload'
+);
+reset role;
+
+insert into public.collection_runs(id, provider_code, schedule_bucket, run_kind, status, lease_until, started_at)
+values (
+  '30000000-0000-4000-8000-000000000403', 'dup-one', '2026-08-10T00:00:00Z',
+  'reconciliation', 'running', clock_timestamp() + interval '1 hour', clock_timestamp()
+);
+set local role service_role;
+select lives_ok(
+  $ingest$select public.ingest_source_postings(
+    'dup-one',
+    '30000000-0000-4000-8000-000000000403',
+    $payload$[{
+      "externalId":"left-1",
+      "originalUrl":"https://one.example.com/jobs/left-1",
+      "sourceStatus":"active",
+      "fetchedAt":"2026-08-10T00:00:00Z",
+      "contentFingerprint":"left-refresh",
+      "sourceValues":{"title":"Duplicate right"},
+      "normalized":{"title":"Duplicate right","companyName":"Shared company","deadlineKind":"unknown"},
+      "fieldProvenance":{}
+    }]$payload$::jsonb,
+    true,
+    true
+  )$ingest$,
+  'complete reconciliation finalizes and refreshes duplicate evidence atomically'
+);
+reset role;
+select is(
+  (select evidence_revision from public.catalog_duplicate_candidates where id = '40000000-0000-4000-8000-000000000401'),
+  2,
+  'complete refresh supersedes only the changed candidate evidence revision'
+);
+select is(
+  (select left_generation_id from public.catalog_duplicate_candidates where id = '40000000-0000-4000-8000-000000000401'),
+  '30000000-0000-4000-8000-000000000403'::uuid,
+  'refreshed evidence records the endpoint current complete reconciliation generation'
+);
+select is(
+  (select count(*)::integer from public.catalog_duplicate_candidates),
+  1,
+  'complete refresh updates the ordered candidate pair instead of creating a retry duplicate'
+);
+
+select has_function('public', 'get_catalog_duplicate_detail', 'the safe duplicate-detail companion RPC is available');
+select ok(
+  has_function_privilege('authenticated', 'public.get_catalog_duplicate_detail(uuid)', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.get_catalog_duplicate_detail(uuid)', 'EXECUTE')
+  and not has_function_privilege('service_role', 'public.get_catalog_duplicate_detail(uuid)', 'EXECUTE'),
+  'only authenticated users can execute the duplicate-detail companion RPC'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000401', true);
+select is(
+  public.get_catalog_duplicate_detail('10000000-0000-4000-8000-000000000401')#>>'{candidates,0,sources,0,originalUrl}',
+  'https://one.example.com/jobs/left-1',
+  'duplicate detail returns the verified endpoint source link'
+);
+select is(
+  public.get_catalog_duplicate_detail('10000000-0000-4000-8000-000000000401')#>>'{candidates,0,currentUser,decision}',
+  'merged',
+  'duplicate detail exposes only the caller decision'
 );
 reset role;
 

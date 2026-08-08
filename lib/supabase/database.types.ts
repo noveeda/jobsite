@@ -1120,6 +1120,7 @@ export type Database = {
         Args: { target_id: string }
         Returns: Json
       }
+      get_catalog_duplicate_detail: { Args: { target_id: string }; Returns: Json }
       ingest_source_postings: {
         Args: {
           target_finalize?: boolean

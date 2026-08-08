@@ -94,7 +94,7 @@ create table public.catalog_duplicate_issue_reports (
   constraint catalog_duplicate_issue_reports_endpoints_check check (jsonb_typeof(portable_endpoints) = 'object')
 );
 
-create function public.catalog_duplicate_validate_candidate()
+create or replace function public.catalog_duplicate_validate_candidate()
 returns trigger
 language plpgsql
 security definer
@@ -110,6 +110,21 @@ begin
   -- Let the named ordered-pair constraints report identity errors before
   -- inspecting evidence that cannot be meaningful for an invalid pair.
   if new.left_canonical_job_id >= new.right_canonical_job_id then
+    return new;
+  end if;
+
+  -- Complete reconciliation may retire facts whose prior generations are no
+  -- longer current. Retiring that unchanged evidence must stay possible so it
+  -- can retain private decision history without pretending it is current.
+  if tg_op = 'UPDATE'
+     and old.status = 'active'
+     and new.status = 'superseded'
+     and new.left_source_posting_id is not distinct from old.left_source_posting_id
+     and new.right_source_posting_id is not distinct from old.right_source_posting_id
+     and new.left_generation_id is not distinct from old.left_generation_id
+     and new.right_generation_id is not distinct from old.right_generation_id
+     and new.score is not distinct from old.score
+     and new.reasons is not distinct from old.reasons then
     return new;
   end if;
 
@@ -544,5 +559,359 @@ revoke all on function public.set_catalog_duplicate_decision(uuid, text, uuid, i
 revoke all on function public.submit_catalog_duplicate_issue_report(uuid, text, text, uuid, jsonb) from public, anon, authenticated;
 grant execute on function public.set_catalog_duplicate_decision(uuid, text, uuid, integer, jsonb) to authenticated;
 grant execute on function public.submit_catalog_duplicate_issue_report(uuid, text, text, uuid, jsonb) to authenticated;
+
+-- A source link is presentational evidence, not a provider-controlled redirect.
+-- Keep this guard in SQL so every caller of the companion detail RPC gets the
+-- same credential-free, provider-host-bound guarantee.
+create function public.catalog_duplicate_safe_source_url(target_url text, target_terms_url text)
+returns text
+language plpgsql
+immutable
+security definer
+set search_path = ''
+as $$
+declare
+  source_authority text;
+  provider_authority text;
+begin
+  if target_url is null or target_terms_url is null
+     or target_url !~ '^https://[^[:space:]@/?#]+(?::[0-9]{1,5})?(?:[/?#]|$)'
+     or target_terms_url !~ '^https://[^[:space:]@/?#]+(?::[0-9]{1,5})?(?:[/?#]|$)'
+     or target_url ~ '^https://[^/?#]*@'
+     or target_terms_url ~ '^https://[^/?#]*@' then
+    return null;
+  end if;
+  source_authority := lower(substring(target_url from '^https://([^/?#]+)'));
+  provider_authority := lower(substring(target_terms_url from '^https://([^/?#]+)'));
+  if source_authority is null or provider_authority is null or source_authority <> provider_authority then
+    return null;
+  end if;
+  return target_url;
+end;
+$$;
+
+create or replace function public.catalog_duplicate_is_currently_eligible(target_candidate_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.catalog_duplicate_candidates as candidate
+    join public.canonical_jobs as left_job on left_job.id = candidate.left_canonical_job_id
+    join public.canonical_jobs as right_job on right_job.id = candidate.right_canonical_job_id
+    join public.source_postings as left_posting on left_posting.id = candidate.left_source_posting_id
+    join public.source_postings as right_posting on right_posting.id = candidate.right_source_posting_id
+    join public.source_providers as left_provider on left_provider.code = left_posting.provider_code
+    join public.source_providers as right_provider on right_provider.code = right_posting.provider_code
+    join public.collection_runs as left_run on left_run.id = candidate.left_generation_id
+    join public.collection_runs as right_run on right_run.id = candidate.right_generation_id
+    where candidate.id = target_candidate_id
+      and candidate.status = 'active'
+      and left_job.lifecycle_status in ('active', 'stale')
+      and right_job.lifecycle_status in ('active', 'stale')
+      and left_posting.canonical_job_id = left_job.id
+      and right_posting.canonical_job_id = right_job.id
+      and left_posting.provider_code <> right_posting.provider_code
+      and left_posting.source_status in ('active', 'missing_once')
+      and right_posting.source_status in ('active', 'missing_once')
+      and left_provider.enabled and right_provider.enabled
+      and public.catalog_duplicate_safe_source_url(left_posting.original_url, left_provider.terms_url) is not null
+      and public.catalog_duplicate_safe_source_url(right_posting.original_url, right_provider.terms_url) is not null
+      and left_posting.last_collection_run_id = left_run.id
+      and right_posting.last_collection_run_id = right_run.id
+      and left_run.provider_code = left_posting.provider_code
+      and right_run.provider_code = right_posting.provider_code
+      and left_run.run_kind = 'reconciliation' and right_run.run_kind = 'reconciliation'
+      and left_run.status = 'succeeded' and right_run.status = 'succeeded'
+      and left_run.snapshot_complete and right_run.snapshot_complete
+  );
+$$;
+
+create function public.refresh_catalog_duplicate_candidates_for_reconciliation(
+  target_provider_code text,
+  target_run_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  current_run public.collection_runs%rowtype;
+  candidate_record record;
+begin
+  select * into current_run
+  from public.collection_runs
+  where id = target_run_id and provider_code = target_provider_code
+  for update;
+  if current_run.id is null
+     or current_run.run_kind <> 'reconciliation'
+     or current_run.status <> 'succeeded'
+     or not current_run.snapshot_complete then
+    raise exception 'complete reconciliation required for duplicate refresh' using errcode = '55000';
+  end if;
+
+  -- Only a complete reconciliation can supersede evidence. Decisions and their
+  -- append-only events remain untouched because candidates are never deleted.
+  update public.catalog_duplicate_candidates as candidate
+  set status = 'superseded', updated_at = clock_timestamp()
+  where candidate.status = 'active'
+    and exists (
+      select 1
+      from public.source_postings as left_posting
+      join public.source_postings as right_posting on right_posting.id = candidate.right_source_posting_id
+      where left_posting.id = candidate.left_source_posting_id
+        and (left_posting.provider_code = target_provider_code or right_posting.provider_code = target_provider_code)
+    )
+    and not public.catalog_duplicate_is_currently_eligible(candidate.id);
+
+  for candidate_record in
+    with eligible_pairs as (
+      select
+        left_job.id as left_job_id,
+        right_job.id as right_job_id,
+        left_posting.id as left_posting_id,
+        right_posting.id as right_posting_id,
+        left_posting.last_collection_run_id as left_generation_id,
+        right_posting.last_collection_run_id as right_generation_id,
+        case when regexp_replace(lower(left_job.company_name), '[^[:alnum:]]+', '', 'g')
+                    = regexp_replace(lower(right_job.company_name), '[^[:alnum:]]+', '', 'g') then 0.5 else 0 end
+          + case when regexp_replace(lower(left_job.title), '[^[:alnum:]]+', '', 'g')
+                    = regexp_replace(lower(right_job.title), '[^[:alnum:]]+', '', 'g') then 0.5 else 0 end as score,
+        case
+          when regexp_replace(lower(left_job.company_name), '[^[:alnum:]]+', '', 'g')
+                    = regexp_replace(lower(right_job.company_name), '[^[:alnum:]]+', '', 'g')
+           and regexp_replace(lower(left_job.title), '[^[:alnum:]]+', '', 'g')
+                    = regexp_replace(lower(right_job.title), '[^[:alnum:]]+', '', 'g')
+          then jsonb_build_array('company_match', 'title_match')
+          else '[]'::jsonb
+        end as reasons,
+        row_number() over (partition by left_job.id, right_job.id order by left_posting.id, right_posting.id) as source_rank
+      from public.source_postings as left_posting
+      join public.canonical_jobs as left_job on left_job.id = left_posting.canonical_job_id
+      join public.source_providers as left_provider on left_provider.code = left_posting.provider_code
+      join public.collection_runs as left_run on left_run.id = left_posting.last_collection_run_id
+      join public.source_postings as right_posting
+        on left_posting.canonical_job_id < right_posting.canonical_job_id
+       and left_posting.provider_code <> right_posting.provider_code
+      join public.canonical_jobs as right_job on right_job.id = right_posting.canonical_job_id
+      join public.source_providers as right_provider on right_provider.code = right_posting.provider_code
+      join public.collection_runs as right_run on right_run.id = right_posting.last_collection_run_id
+      where (left_posting.provider_code = target_provider_code or right_posting.provider_code = target_provider_code)
+        and left_posting.source_status in ('active', 'missing_once')
+        and right_posting.source_status in ('active', 'missing_once')
+        and left_job.lifecycle_status in ('active', 'stale')
+        and right_job.lifecycle_status in ('active', 'stale')
+        and left_provider.enabled and right_provider.enabled
+        and public.catalog_duplicate_safe_source_url(left_posting.original_url, left_provider.terms_url) is not null
+        and public.catalog_duplicate_safe_source_url(right_posting.original_url, right_provider.terms_url) is not null
+        and left_run.run_kind = 'reconciliation' and right_run.run_kind = 'reconciliation'
+        and left_run.status = 'succeeded' and right_run.status = 'succeeded'
+        and left_run.snapshot_complete and right_run.snapshot_complete
+    )
+    select * from eligible_pairs
+    where source_rank = 1 and score >= 0.7
+  loop
+    insert into public.catalog_duplicate_candidates as candidate (
+      left_canonical_job_id, right_canonical_job_id,
+      left_source_posting_id, right_source_posting_id,
+      left_generation_id, right_generation_id, score, reasons
+    ) values (
+      candidate_record.left_job_id, candidate_record.right_job_id,
+      candidate_record.left_posting_id, candidate_record.right_posting_id,
+      candidate_record.left_generation_id, candidate_record.right_generation_id,
+      candidate_record.score, candidate_record.reasons
+    ) on conflict (left_canonical_job_id, right_canonical_job_id) do update
+      set left_source_posting_id = excluded.left_source_posting_id,
+          right_source_posting_id = excluded.right_source_posting_id,
+          left_generation_id = excluded.left_generation_id,
+          right_generation_id = excluded.right_generation_id,
+          score = excluded.score,
+          reasons = excluded.reasons,
+          status = 'active',
+          evidence_revision = candidate.evidence_revision + 1,
+          updated_at = clock_timestamp()
+      where candidate.status <> 'active'
+        or candidate.left_source_posting_id is distinct from excluded.left_source_posting_id
+        or candidate.right_source_posting_id is distinct from excluded.right_source_posting_id
+        or candidate.left_generation_id is distinct from excluded.left_generation_id
+        or candidate.right_generation_id is distinct from excluded.right_generation_id
+        or candidate.score is distinct from excluded.score
+        or candidate.reasons is distinct from excluded.reasons;
+  end loop;
+end;
+$$;
+
+create function public.catalog_duplicate_detail_component(target_user_id uuid, target_start_id uuid)
+returns uuid[]
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  with recursive graph(left_id, right_id) as (
+    select candidate.left_canonical_job_id, candidate.right_canonical_job_id
+    from public.catalog_duplicate_decisions as decision
+    join public.catalog_duplicate_candidates as candidate on candidate.id = decision.candidate_id
+    where decision.user_id = target_user_id
+      and decision.decision = 'merged'
+      and public.catalog_duplicate_is_currently_eligible(candidate.id)
+  ), walk(node, path) as (
+    select target_start_id, array[target_start_id]::uuid[]
+    union all
+    select case when graph.left_id = walk.node then graph.right_id else graph.left_id end,
+      walk.path || case when graph.left_id = walk.node then graph.right_id else graph.left_id end
+    from walk
+    join graph on graph.left_id = walk.node or graph.right_id = walk.node
+    where not (case when graph.left_id = walk.node then graph.right_id else graph.left_id end = any(walk.path))
+      and cardinality(walk.path) < 26
+  )
+  select coalesce(array_agg(node order by node), array[target_start_id]::uuid[])
+  from (select distinct node from walk) as nodes;
+$$;
+
+create function public.get_catalog_duplicate_detail(target_id uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  caller_id uuid := auth.uid();
+  candidate_record record;
+  members uuid[];
+  candidate_count integer := 0;
+  result jsonb := '[]'::jsonb;
+  sources jsonb;
+  conflicts jsonb;
+  user_detail jsonb;
+begin
+  if caller_id is null then
+    raise exception 'authentication required' using errcode = '28000';
+  end if;
+  if not public.catalog_duplicate_has_current_consent(caller_id) then
+    return jsonb_build_object('candidates', result);
+  end if;
+
+  for candidate_record in
+    select candidate.*, left_job.deadline_at as left_deadline_at, right_job.deadline_at as right_deadline_at,
+      left_job.locations as left_locations, right_job.locations as right_locations,
+      left_posting.provider_code as left_provider_code, right_posting.provider_code as right_provider_code,
+      left_provider.display_name as left_provider_name, right_provider.display_name as right_provider_name,
+      left_posting.original_url as left_original_url, right_posting.original_url as right_original_url,
+      left_posting.last_observed_at as left_observed_at, right_posting.last_observed_at as right_observed_at
+    from public.catalog_duplicate_candidates as candidate
+    join public.canonical_jobs as left_job on left_job.id = candidate.left_canonical_job_id
+    join public.canonical_jobs as right_job on right_job.id = candidate.right_canonical_job_id
+    join public.source_postings as left_posting on left_posting.id = candidate.left_source_posting_id
+    join public.source_postings as right_posting on right_posting.id = candidate.right_source_posting_id
+    join public.source_providers as left_provider on left_provider.code = left_posting.provider_code
+    join public.source_providers as right_provider on right_provider.code = right_posting.provider_code
+    where (candidate.left_canonical_job_id = target_id or candidate.right_canonical_job_id = target_id)
+      and public.catalog_duplicate_is_currently_eligible(candidate.id)
+    order by candidate.id
+  loop
+    candidate_count := candidate_count + 1;
+    if candidate_count > 25 then
+      raise exception 'duplicate detail candidate limit exceeded' using errcode = '54000';
+    end if;
+    members := public.catalog_duplicate_detail_component(caller_id, target_id);
+    if cardinality(members) > 25 then
+      raise exception 'duplicate component limit exceeded' using errcode = '54000';
+    end if;
+    sources := jsonb_build_array(
+      jsonb_build_object('provider', candidate_record.left_provider_code, 'providerName', candidate_record.left_provider_name,
+        'originalUrl', public.catalog_duplicate_safe_source_url(candidate_record.left_original_url, (select terms_url from public.source_providers where code = candidate_record.left_provider_code)),
+        'observedAt', candidate_record.left_observed_at),
+      jsonb_build_object('provider', candidate_record.right_provider_code, 'providerName', candidate_record.right_provider_name,
+        'originalUrl', public.catalog_duplicate_safe_source_url(candidate_record.right_original_url, (select terms_url from public.source_providers where code = candidate_record.right_provider_code)),
+        'observedAt', candidate_record.right_observed_at)
+    );
+    conflicts := '[]'::jsonb;
+    if candidate_record.left_deadline_at is distinct from candidate_record.right_deadline_at then
+      conflicts := conflicts || jsonb_build_array(jsonb_build_object('field', 'deadlineAt', 'values', jsonb_build_array(
+        jsonb_build_object('provider', candidate_record.left_provider_code, 'observedAt', candidate_record.left_observed_at, 'value', candidate_record.left_deadline_at),
+        jsonb_build_object('provider', candidate_record.right_provider_code, 'observedAt', candidate_record.right_observed_at, 'value', candidate_record.right_deadline_at)
+      )));
+    end if;
+    if candidate_record.left_locations is distinct from candidate_record.right_locations then
+      conflicts := conflicts || jsonb_build_array(jsonb_build_object('field', 'locations', 'values', jsonb_build_array(
+        jsonb_build_object('provider', candidate_record.left_provider_code, 'observedAt', candidate_record.left_observed_at, 'value', nullif(array_to_string(candidate_record.left_locations, ', '), '')),
+        jsonb_build_object('provider', candidate_record.right_provider_code, 'observedAt', candidate_record.right_observed_at, 'value', nullif(array_to_string(candidate_record.right_locations, ', '), ''))
+      )));
+    end if;
+    select jsonb_build_object(
+      'decision', decision.decision,
+      'revision', coalesce(decision.effective_revision, 0),
+      'history', coalesce((
+        select jsonb_agg(jsonb_build_object('action', event.action, 'createdAt', event.created_at) order by event.created_at desc, event.id desc)
+        from (
+          select * from public.catalog_duplicate_decision_events
+          where user_id = caller_id and candidate_id = candidate_record.id
+          order by created_at desc, id desc limit 25
+        ) as event
+      ), '[]'::jsonb)
+    ) into user_detail
+    from public.catalog_duplicate_decisions as decision
+    where decision.user_id = caller_id and decision.candidate_id = candidate_record.id;
+    user_detail := coalesce(user_detail, jsonb_build_object('decision', null, 'revision', 0, 'history', '[]'::jsonb));
+    result := result || jsonb_build_array(jsonb_build_object(
+      'id', candidate_record.id,
+      'counterpartId', case when candidate_record.left_canonical_job_id = target_id then candidate_record.right_canonical_job_id else candidate_record.left_canonical_job_id end,
+      'score', candidate_record.score,
+      'reasons', candidate_record.reasons,
+      'evidenceRevision', candidate_record.evidence_revision,
+      'sources', sources,
+      'conflicts', conflicts,
+      'currentUser', user_detail,
+      'group', jsonb_build_object(
+        'representativeId', (select min(member::text)::uuid from unnest(members) as member),
+        'memberIds', (select jsonb_agg(member order by member) from unnest(members) as member)
+      )
+    ));
+  end loop;
+  return jsonb_build_object('candidates', result);
+end;
+$$;
+
+-- Wrap the existing ingestion procedure instead of refreshing after the caller
+-- sees success. A refresh exception rolls back the complete finalization too.
+alter function public.ingest_source_postings(text, uuid, jsonb, boolean, boolean)
+  rename to ingest_source_postings_base;
+
+create function public.ingest_source_postings(
+  target_provider_code text,
+  target_run_id uuid,
+  target_postings jsonb,
+  target_finalize boolean default false,
+  target_snapshot_complete boolean default false
+)
+returns table (upserted_count integer, closed_count integer)
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+begin
+  return query select * from public.ingest_source_postings_base(
+    target_provider_code, target_run_id, target_postings, target_finalize, target_snapshot_complete
+  );
+  if target_finalize and target_snapshot_complete then
+    perform public.refresh_catalog_duplicate_candidates_for_reconciliation(target_provider_code, target_run_id);
+  end if;
+end;
+$$;
+
+revoke all on function public.catalog_duplicate_safe_source_url(text, text) from public, anon, authenticated;
+revoke all on function public.refresh_catalog_duplicate_candidates_for_reconciliation(text, uuid) from public, anon, authenticated;
+revoke all on function public.catalog_duplicate_detail_component(uuid, uuid) from public, anon, authenticated;
+revoke all on function public.get_catalog_duplicate_detail(uuid) from public, anon, service_role;
+revoke all on function public.ingest_source_postings_base(text, uuid, jsonb, boolean, boolean) from public, anon, authenticated, service_role;
+revoke all on function public.ingest_source_postings(text, uuid, jsonb, boolean, boolean) from public, anon, authenticated;
+grant execute on function public.get_catalog_duplicate_detail(uuid) to authenticated;
+grant execute on function public.ingest_source_postings(text, uuid, jsonb, boolean, boolean) to service_role;
 
 commit;

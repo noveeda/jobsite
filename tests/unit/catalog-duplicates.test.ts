@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createCatalogDuplicateCandidate } from "@/lib/domain/catalog-duplicates";
-import { catalogDuplicateCandidateSchema } from "@/lib/validation/feed";
+import { catalogDuplicateCandidateSchema, catalogDuplicateDetailSchema } from "@/lib/validation/feed";
 
 const leftId = "10000000-0000-4000-8000-000000000001";
 const rightId = "20000000-0000-4000-8000-000000000002";
@@ -78,5 +78,35 @@ describe("catalog duplicate candidates", () => {
     expect(catalogDuplicateCandidateSchema.safeParse({ ...candidate, unexpected: "unsafe" }).success).toBe(false);
     expect(catalogDuplicateCandidateSchema.safeParse({ ...candidate, score: 1.01 }).success).toBe(false);
     expect(catalogDuplicateCandidateSchema.safeParse({ ...candidate, reasons: { ...candidate?.reasons, titleSimilarity: -0.01 } }).success).toBe(false);
+  });
+
+  it("accepts only bounded, credential-free duplicate detail data", () => {
+    const detail = {
+      candidates: [{
+        id: "30000000-0000-4000-8000-000000000003",
+        counterpartId: rightId,
+        score: 0.9,
+        reasons: ["company_match", "title_match"],
+        evidenceRevision: 2,
+        sources: [
+          { provider: "fixture-one", providerName: "Fixture one", originalUrl: "https://one.example.com/jobs/1", observedAt: "2026-08-09T00:00:00Z" },
+          { provider: "fixture-two", providerName: "Fixture two", originalUrl: "https://two.example.com/jobs/2", observedAt: "2026-08-09T00:00:00Z" },
+        ],
+        conflicts: [{ field: "deadlineAt", values: [
+          { provider: "fixture-one", observedAt: "2026-08-09T00:00:00Z", value: "2026-08-20T00:00:00Z" },
+          { provider: "fixture-two", observedAt: "2026-08-09T00:00:00Z", value: "2026-08-21T00:00:00Z" },
+        ] }],
+        currentUser: { decision: "merged", revision: 1, history: [{ action: "merge", createdAt: "2026-08-09T00:00:00Z" }] },
+        group: { representativeId: leftId, memberIds: [leftId, rightId] },
+      }],
+    };
+
+    expect(catalogDuplicateDetailSchema.safeParse(detail).success).toBe(true);
+    expect(catalogDuplicateDetailSchema.safeParse({ ...detail, unexpected: true }).success).toBe(false);
+    expect(catalogDuplicateDetailSchema.safeParse({
+      ...detail,
+      candidates: [{ ...detail.candidates[0], sources: [{ ...detail.candidates[0].sources[0], originalUrl: "https://user:pass@one.example.com/jobs/1" }] }],
+    }).success).toBe(false);
+    expect(catalogDuplicateDetailSchema.safeParse({ ...detail, candidates: Array.from({ length: 26 }, () => detail.candidates[0]) }).success).toBe(false);
   });
 });
