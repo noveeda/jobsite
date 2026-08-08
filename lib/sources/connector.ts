@@ -100,7 +100,7 @@ async function callProvider(reference: SourceReference) {
 
 async function activeByApproval(provider: Provider) {
   if (provider === "saramin") return (await resolveSaraminActivation()).enabled;
-  return provider === "jobkorea" && process.env.JOBKOREA_CONNECTOR_ENABLED === "true";
+  return false;
 }
 
 function sameValue(a: unknown, b: unknown) {
@@ -204,7 +204,7 @@ export function recognizeSource(input: string): SourceReference {
   }
   if (host === "jobkorea.co.kr" || host.endsWith(".jobkorea.co.kr")) {
     const externalId = url.pathname.match(/GI_Read\/(\d+)/i)?.[1] ?? url.searchParams.get("GI_No");
-    return { provider: "jobkorea", externalId, originalUrl: url.toString(), connectorMode: process.env.JOBKOREA_CONNECTOR_ENABLED === "true" ? "approved_api" : "manual" };
+    return { provider: "jobkorea", externalId, originalUrl: url.toString(), connectorMode: "manual" };
   }
   return { provider: "other", externalId: null, originalUrl: url.toString(), connectorMode: "manual" };
 }

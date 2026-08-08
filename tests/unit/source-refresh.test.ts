@@ -63,33 +63,18 @@ describe("source refresh orchestration", () => {
     }));
   });
 
-  it("keeps the existing JobKorea environment gate separate from Saramin approval", async () => {
-    const previous = process.env.JOBKOREA_CONNECTOR_ENABLED;
-    process.env.JOBKOREA_CONNECTOR_ENABLED = "true";
-    const providerCall = vi.fn().mockResolvedValue({
-      provider: "jobkorea",
-      externalId: "123",
-      originalUrl: "https://www.jobkorea.co.kr/Recruit/GI_Read/123",
-      observedAt: now.toISOString(),
-      status: "active",
-      values: { companyName: "새 회사" },
-      provenance: {},
-    });
-    try {
-      const result = await refreshSource({
-        ...base,
-        source: {
-          ...base.source,
-          provider: "jobkorea",
-          originalUrl: "https://www.jobkorea.co.kr/Recruit/GI_Read/123",
-        },
-      }, { now: () => now, providerCall, persist: vi.fn() });
-      expect(result.status).toBe("active");
-      expect(providerCall).toHaveBeenCalledOnce();
-    } finally {
-      if (previous === undefined) delete process.env.JOBKOREA_CONNECTOR_ENABLED;
-      else process.env.JOBKOREA_CONNECTOR_ENABLED = previous;
-    }
+  it("does not let a JobKorea environment flag bypass source approval", async () => {
+    const providerCall = vi.fn();
+    const result = await refreshSource({
+      ...base,
+      source: {
+        ...base.source,
+        provider: "jobkorea",
+        originalUrl: "https://www.jobkorea.co.kr/Recruit/GI_Read/123",
+      },
+    }, { now: () => now, providerCall, persist: vi.fn() });
+    expect(result.status).toBe("unsupported");
+    expect(providerCall).not.toHaveBeenCalled();
   });
 
   it.each([
