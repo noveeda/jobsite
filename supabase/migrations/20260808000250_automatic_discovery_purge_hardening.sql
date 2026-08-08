@@ -146,10 +146,20 @@ begin
       and (
         field.key in ('locations', 'jobCategories')
           and jsonb_typeof(field.value) = 'array'
-          and jsonb_array_length(field.value) > 0
+          and jsonb_array_length(
+            case
+              when jsonb_typeof(field.value) = 'array' then field.value
+              else '[]'::jsonb
+            end
+          ) > 0
           and not exists (
             select 1
-            from jsonb_array_elements(field.value) as item
+            from jsonb_array_elements(
+              case
+                when jsonb_typeof(field.value) = 'array' then field.value
+                else '[]'::jsonb
+              end
+            ) as item
             where not (
               jsonb_typeof(item) = 'string'
                 and nullif(btrim(item#>>'{}'), '') is not null
@@ -160,10 +170,20 @@ begin
           )
         or field.key = 'employmentTypes'
           and jsonb_typeof(field.value) = 'array'
-          and jsonb_array_length(field.value) > 0
+          and jsonb_array_length(
+            case
+              when jsonb_typeof(field.value) = 'array' then field.value
+              else '[]'::jsonb
+            end
+          ) > 0
           and not exists (
             select 1
-            from jsonb_array_elements(field.value) as item
+            from jsonb_array_elements(
+              case
+                when jsonb_typeof(field.value) = 'array' then field.value
+                else '[]'::jsonb
+              end
+            ) as item
             where jsonb_typeof(item) <> 'string'
                or nullif(btrim(item#>>'{}'), '') is null
           )
@@ -232,7 +252,13 @@ begin
         when not candidate.replace_locations then candidate.locations
         when jsonb_typeof(candidate.remaining_source_values->'locations') = 'array' then array(
           select btrim(coalesce(value->>'label', value#>>'{}'))
-          from jsonb_array_elements(candidate.remaining_source_values->'locations') as value
+          from jsonb_array_elements(
+            case
+              when jsonb_typeof(candidate.remaining_source_values->'locations') = 'array'
+                then candidate.remaining_source_values->'locations'
+              else '[]'::jsonb
+            end
+          ) as value
         )
         else '{}'::text[]
       end as locations,
@@ -240,7 +266,13 @@ begin
         when not candidate.replace_employment then candidate.employment_types
         when jsonb_typeof(candidate.remaining_source_values->'employmentTypes') = 'array' then array(
           select btrim(value#>>'{}')
-          from jsonb_array_elements(candidate.remaining_source_values->'employmentTypes') as value
+          from jsonb_array_elements(
+            case
+              when jsonb_typeof(candidate.remaining_source_values->'employmentTypes') = 'array'
+                then candidate.remaining_source_values->'employmentTypes'
+              else '[]'::jsonb
+            end
+          ) as value
         )
         else '{}'::text[]
       end as employment_types,
@@ -259,7 +291,13 @@ begin
         when not candidate.replace_categories then candidate.job_categories
         when jsonb_typeof(candidate.remaining_source_values->'jobCategories') = 'array' then array(
           select btrim(coalesce(value->>'label', value#>>'{}'))
-          from jsonb_array_elements(candidate.remaining_source_values->'jobCategories') as value
+          from jsonb_array_elements(
+            case
+              when jsonb_typeof(candidate.remaining_source_values->'jobCategories') = 'array'
+                then candidate.remaining_source_values->'jobCategories'
+              else '[]'::jsonb
+            end
+          ) as value
         )
         else '{}'::text[]
       end as job_categories,

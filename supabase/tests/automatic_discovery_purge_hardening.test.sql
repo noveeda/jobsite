@@ -1,5 +1,13 @@
 begin;
-select plan(46);
+select plan(47);
+
+insert into auth.users(id, aud, role, email)
+values (
+  '00000000-0000-4000-8000-0000000002a1',
+  'authenticated',
+  'authenticated',
+  'purge-personal-state@example.com'
+);
 
 insert into public.source_providers (
   code, display_name, enabled, access_mode, terms_url, attribution, retention_policy, capabilities
@@ -193,7 +201,7 @@ insert into public.source_postings (
   (
     'purge-neighbor', '00000000-0000-4000-8000-000000000259', 'survivor-active',
     'https://purge-neighbor.example.invalid/jobs/survivor-active', 'https://purge-neighbor.example.invalid/jobs/survivor-active',
-    '{"title":"","companyName":"Active Survivor","postedAt":"not-a-date","locations":[{"code":"SEOUL"}],"employmentTypes":[{"label":"정규직"}],"jobCategories":[{"code":"backend"}]}', 'active', now() - interval '2 hours', now() - interval '2 hours',
+    '{"title":"","companyName":"Active Survivor","postedAt":"not-a-date","locations":"서울","employmentTypes":{"label":"정규직"},"jobCategories":{"label":"개발"}}', 'active', now() - interval '2 hours', now() - interval '2 hours',
     'purge-survivor-active-fingerprint', now()
   ),
   (
@@ -216,6 +224,21 @@ insert into public.source_postings (
 update public.source_postings
 set missing_complete_runs = 2
 where provider_code = 'purge-mixed' and external_id = 'mixed-technical';
+
+insert into public.personal_job_states(
+  user_id,
+  canonical_job_id,
+  saved,
+  application_status,
+  memo
+)
+values (
+  '00000000-0000-4000-8000-0000000002a1',
+  '00000000-0000-4000-8000-000000000259',
+  true,
+  'applied',
+  'Purge must preserve this memo'
+);
 
 select ok((
   select procedure.prosecdef
@@ -465,12 +488,21 @@ select is(
 );
 
 set local role service_role;
-select is(
-  public.purge_source_provider_data('purge-survivor-target', 'TERMS_WITHDRAWN'),
-  1,
-  'survivor fixture counts only the changed target source row'
+select lives_ok(
+  $$select public.purge_source_provider_data('purge-survivor-target', 'TERMS_WITHDRAWN')$$,
+  'scalar and object array candidates do not abort survivor selection'
 );
 reset role;
+select is(
+  (
+    select closed_count
+    from public.collection_runs
+    where provider_code = 'purge-survivor-target'
+      and error_summary = 'purge:TERMS_WITHDRAWN'
+  ),
+  1,
+  'survivor fixture audit counts only the changed target source row'
+);
 select is(
   (select lifecycle_status from public.canonical_jobs where id = '00000000-0000-4000-8000-000000000259'),
   'active',
@@ -584,10 +616,15 @@ select throws_ok(
 );
 reset role;
 
-select todo('personal_job_states is scheduled for T041; preservation coverage is pending', 1);
-select ok(
-  to_regclass('public.personal_job_states') is not null,
-  'TODO: purge preserves personal_job_states once T041 creates the table'
+select is(
+  (
+    select saved::text || '|' || application_status || '|' || memo
+    from public.personal_job_states
+    where user_id = '00000000-0000-4000-8000-0000000002a1'
+      and canonical_job_id = '00000000-0000-4000-8000-000000000259'
+  ),
+  'true|applied|Purge must preserve this memo',
+  'purge preserves the personal state row, application status, and memo'
 );
 
 select * from finish();
