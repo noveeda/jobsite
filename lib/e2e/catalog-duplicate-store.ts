@@ -117,7 +117,10 @@ export async function getE2ECatalogDuplicateDetail(userId: string, subjectId: st
           ] },
         ],
         currentUser: record,
-        group: { representativeId: members(state, userId, subjectId)[0], memberIds: members(state, userId, subjectId) },
+        group: (() => {
+          const groupMembers = members(state, userId, subjectId);
+          return { representativeId: groupMembers[0], memberIds: groupMembers };
+        })(),
       };
     }),
   };

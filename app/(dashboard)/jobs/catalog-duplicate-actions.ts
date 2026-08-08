@@ -42,9 +42,14 @@ export type CatalogDuplicateActionState =
   | { ok: true; status?: "merged" | "separate" | "undone"; revision?: number; replayed: boolean }
   | {
     ok: false;
-    code: "INVALID_INPUT" | "AUTH_REQUIRED" | "SAVE_FAILED" | "SEPARATE_CONFLICT" | "INDIRECT_MERGE_CONFLICT" | "COMPONENT_LIMIT";
+    code: "SEPARATE_CONFLICT" | "INDIRECT_MERGE_CONFLICT" | "COMPONENT_LIMIT";
     message: string;
-    blockingEdges?: string[];
+    blockingEdges: string[];
+  }
+  | {
+    ok: false;
+    code: "INVALID_INPUT" | "AUTH_REQUIRED" | "SAVE_FAILED";
+    message: string;
   }
   | null;
 

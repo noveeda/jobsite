@@ -30,7 +30,7 @@ function setOperationId(input: HTMLInputElement | null) {
 
 function ActionFeedback({ state }: { state: CatalogDuplicateActionState }) {
   if (state?.ok === true) return <p role="status">{state.replayed ? "이전 요청 결과를 다시 확인했습니다." : "변경했습니다."}</p>;
-  if (state?.ok === false && !state.blockingEdges) return <p className="error" role="alert">{state.message}</p>;
+  if (state?.ok === false && !("blockingEdges" in state)) return <p className="error" role="alert">{state.message}</p>;
   return null;
 }
 
@@ -58,8 +58,8 @@ function DecisionForm({
   } as const;
 
   useEffect(() => {
-    if (state?.ok === false && state.blockingEdges) {
-      onConflict({ code: state.code as CatalogDuplicateConflict["code"], blockingEdges: state.blockingEdges });
+    if (state?.ok === false && "blockingEdges" in state) {
+      onConflict({ code: state.code, blockingEdges: state.blockingEdges });
     }
   }, [onConflict, state]);
 
