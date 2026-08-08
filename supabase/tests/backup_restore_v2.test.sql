@@ -1,5 +1,5 @@
 begin;
-select plan(20);
+select plan(30);
 
 insert into auth.users(id, aud, role, email)
 values
@@ -222,7 +222,6 @@ values (
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-0000000000c1', true);
 
-select todo('T047 implements backup v2 after duplicate decisions and legacy links', 1);
 select lives_ok(
   $$select public.preview_backup_restore((select payload from backup_v2_fixture))$$,
   'backup v2 preview accepts the versioned personal-state envelope'
@@ -232,7 +231,6 @@ select is(
   0,
   'backup v2 preview performs no writes'
 );
-select todo('T047 implements backup v2 after duplicate decisions and legacy links', 7);
 select lives_ok(
   $$select public.commit_backup_restore((select payload from backup_v2_fixture), '30000000-0000-4000-8000-0000000000c1')$$,
   'backup v2 commit restores personal state transactionally'
@@ -287,6 +285,77 @@ select is(
   ),
   '1|1',
   'personal-state restore neither duplicates nor deletes shared catalog rows'
+);
+
+select ok(
+  has_function_privilege('authenticated', 'public.commit_backup_restore(jsonb, uuid)', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.commit_backup_restore(jsonb, uuid)', 'EXECUTE')
+  and not has_function_privilege('service_role', 'public.commit_backup_restore(jsonb, uuid)', 'EXECUTE'),
+  'only authenticated callers can execute the version-dispatching restore RPC'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.unresolved_source_overlays', 'INSERT')
+  and not has_table_privilege('authenticated', 'public.unresolved_duplicate_overlays', 'INSERT')
+  and not has_table_privilege('service_role', 'public.unresolved_source_overlays', 'INSERT')
+  and not has_table_privilege('service_role', 'public.unresolved_duplicate_overlays', 'INSERT'),
+  'private unresolved overlays have no direct authenticated or service-role DML grant'
+);
+select ok(
+  not has_function_privilege('anon', 'public.preview_backup_restore(jsonb)', 'EXECUTE')
+  and not has_function_privilege('service_role', 'public.preview_backup_restore(jsonb)', 'EXECUTE'),
+  'the v2 preview RPC is not executable by anonymous or service callers'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-0000000000c1', true);
+select throws_like(
+  $$select public.commit_backup_restore(
+    jsonb_set((select payload from backup_v2_fixture), '{personalStates,0,sourceRef,provider}', '"INVALID"'::jsonb),
+    '30000000-0000-4000-8000-0000000000c1'
+  )$$,
+  '%invalid backup v2 personal state%',
+  'invalid v2 input aborts before any owner mutation'
+);
+reset role;
+select is(
+  (select memo from public.personal_job_states where user_id = '00000000-0000-4000-8000-0000000000c1'),
+  'Restored personal memo',
+  'an invalid restore leaves the existing owner state unchanged'
+);
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-0000000000c1', true);
+select lives_ok(
+  $$select public.commit_backup_restore(
+    jsonb_set((select payload from backup_v2_fixture), '{personalStates,0,sourceRef,externalId}', '"missing-source"'::jsonb),
+    '30000000-0000-4000-8000-0000000000c1'
+  )$$,
+  'a missing portable source restores into a private unresolved overlay'
+);
+reset role;
+select is(
+  (select count(*)::integer from public.unresolved_source_overlays where user_id = '00000000-0000-4000-8000-0000000000c1'),
+  2,
+  'missing source adds exactly one owner overlay beside the exported fixture overlay'
+);
+select is(
+  (select count(*)::integer from public.canonical_jobs),
+  1,
+  'unresolved source restore never creates a shared canonical row'
+);
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-0000000000c1', true);
+select lives_ok(
+  $$select public.commit_backup_restore(
+    jsonb_set((select payload from backup_v2_fixture), '{personalStates,0,sourceRef,externalId}', '"missing-source"'::jsonb),
+    '30000000-0000-4000-8000-0000000000c1'
+  )$$,
+  'replaying a missing portable source restore succeeds'
+);
+reset role;
+select is(
+  (select count(*)::integer from public.unresolved_source_overlays where user_id = '00000000-0000-4000-8000-0000000000c1'),
+  2,
+  'replaying a missing portable source restore remains idempotent'
 );
 
 select * from finish();
