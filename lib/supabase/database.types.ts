@@ -130,6 +130,250 @@ export type Database = {
         }
         Relationships: []
       }
+      catalog_duplicate_candidates: {
+        Row: {
+          created_at: string
+          evidence_revision: number
+          id: string
+          left_canonical_job_id: string
+          left_generation_id: string
+          left_source_posting_id: string
+          reasons: Json
+          right_canonical_job_id: string
+          right_generation_id: string
+          right_source_posting_id: string
+          score: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          evidence_revision?: number
+          id?: string
+          left_canonical_job_id: string
+          left_generation_id: string
+          left_source_posting_id: string
+          reasons: Json
+          right_canonical_job_id: string
+          right_generation_id: string
+          right_source_posting_id: string
+          score: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          evidence_revision?: number
+          id?: string
+          left_canonical_job_id?: string
+          left_generation_id?: string
+          left_source_posting_id?: string
+          reasons?: Json
+          right_canonical_job_id?: string
+          right_generation_id?: string
+          right_source_posting_id?: string
+          score?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_duplicate_candidates_left_canonical_job_id_fkey"
+            columns: ["left_canonical_job_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_duplicate_candidates_left_generation_id_fkey"
+            columns: ["left_generation_id"]
+            isOneToOne: false
+            referencedRelation: "collection_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_duplicate_candidates_left_source_posting_id_fkey"
+            columns: ["left_source_posting_id"]
+            isOneToOne: false
+            referencedRelation: "source_postings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_duplicate_candidates_right_canonical_job_id_fkey"
+            columns: ["right_canonical_job_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_duplicate_candidates_right_generation_id_fkey"
+            columns: ["right_generation_id"]
+            isOneToOne: false
+            referencedRelation: "collection_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_duplicate_candidates_right_source_posting_id_fkey"
+            columns: ["right_source_posting_id"]
+            isOneToOne: false
+            referencedRelation: "source_postings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_duplicate_decision_events: {
+        Row: {
+          action: string
+          after_decision: string | null
+          before_decision: string | null
+          candidate_id: string
+          created_at: string
+          effective_revision: number
+          expected_revision: number
+          id: string
+          operation_id: string
+          payload_fingerprint: string
+          portable_endpoints: Json
+          result: Json
+          user_id: string
+        }
+        Insert: {
+          action: string
+          after_decision?: string | null
+          before_decision?: string | null
+          candidate_id: string
+          created_at?: string
+          effective_revision: number
+          expected_revision: number
+          id?: string
+          operation_id: string
+          payload_fingerprint: string
+          portable_endpoints: Json
+          result: Json
+          user_id: string
+        }
+        Update: {
+          action?: string
+          after_decision?: string | null
+          before_decision?: string | null
+          candidate_id?: string
+          created_at?: string
+          effective_revision?: number
+          expected_revision?: number
+          id?: string
+          operation_id?: string
+          payload_fingerprint?: string
+          portable_endpoints?: Json
+          result?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_duplicate_decision_events_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_duplicate_candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_duplicate_decisions: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          decision: string | null
+          effective_revision: number
+          portable_endpoints: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          decision?: string | null
+          effective_revision?: number
+          portable_endpoints: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          decision?: string | null
+          effective_revision?: number
+          portable_endpoints?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_duplicate_decisions_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_duplicate_candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_duplicate_graph_locks: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      catalog_duplicate_issue_reports: {
+        Row: {
+          candidate_id: string
+          category: string
+          created_at: string
+          id: string
+          message: string
+          operation_id: string
+          payload_fingerprint: string
+          portable_endpoints: Json
+          user_id: string
+        }
+        Insert: {
+          candidate_id: string
+          category: string
+          created_at?: string
+          id?: string
+          message: string
+          operation_id: string
+          payload_fingerprint: string
+          portable_endpoints: Json
+          user_id: string
+        }
+        Update: {
+          candidate_id?: string
+          category?: string
+          created_at?: string
+          id?: string
+          message?: string
+          operation_id?: string
+          payload_fingerprint?: string
+          portable_endpoints?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_duplicate_issue_reports_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_duplicate_candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collection_runs: {
         Row: {
           attempt_count: number
@@ -762,6 +1006,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      catalog_duplicate_component: {
+        Args: {
+          target_excluded_candidate_id: string
+          target_start_id: string
+          target_user_id: string
+        }
+        Returns: string[]
+      }
+      catalog_duplicate_has_current_consent: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
+      catalog_duplicate_is_currently_eligible: {
+        Args: { target_candidate_id: string }
+        Returns: boolean
+      }
+      catalog_duplicate_portable_endpoints: {
+        Args: { target_candidate_id: string }
+        Returns: Json
+      }
       claim_collection_run: {
         Args: {
           target_lease_seconds?: number
@@ -904,6 +1168,26 @@ export type Database = {
           target_revision_id: string
         }
         Returns: undefined
+      }
+      set_catalog_duplicate_decision: {
+        Args: {
+          target_action: string
+          target_candidate_id: string
+          target_expected_revision: number
+          target_operation_id: string
+          target_payload?: Json
+        }
+        Returns: Json
+      }
+      submit_catalog_duplicate_issue_report: {
+        Args: {
+          target_candidate_id: string
+          target_category: string
+          target_message: string
+          target_operation_id: string
+          target_payload?: Json
+        }
+        Returns: Json
       }
       update_job_tracking: {
         Args: {
