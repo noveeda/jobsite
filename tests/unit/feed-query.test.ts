@@ -80,7 +80,8 @@ describe("catalog feed query", () => {
   });
 
   it("strictly validates nullable catalog detail RPC results", () => {
-    const item = makeDiscoveryFeedFixture("healthy", parseFeedQuery({})).items[0];
+    const feedItem = makeDiscoveryFeedFixture("healthy", parseFeedQuery({})).items[0];
+    const item = { ...feedItem, personalState: { ...feedItem.personalState, memo: "" } };
     expect(catalogJobDetailSchema.safeParse(item).success).toBe(true);
     expect(catalogJobDetailSchema.safeParse(null).success).toBe(true);
     expect(catalogJobDetailSchema.safeParse({ ...item, internalOps: "secret" }).success).toBe(false);

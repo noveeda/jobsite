@@ -4,21 +4,25 @@ import { notFound } from "next/navigation";
 import { DuplicatePanel } from "@/components/duplicate-panel";
 import { JobDetail, type JobRevisionView } from "@/components/job-detail";
 import { ProviderAttribution } from "@/components/provider-attribution";
+import { PersonalJobControls } from "@/components/personal-job-controls";
 import { SourceStatus } from "@/components/source-status";
 import { requireUser } from "@/lib/auth";
 import { getDiscoveryScenario } from "@/lib/e2e/automatic-discovery";
 import { discoveryFeedFixtures } from "@/lib/e2e/discovery-feed";
 import { getTestJob } from "@/lib/e2e/job-store";
+import { getE2EPersonalState } from "@/lib/e2e/personal-state";
 import { isE2EBypass } from "@/lib/environment";
 import { createClient } from "@/lib/supabase/server";
-import { catalogJobDetailSchema, type CatalogFeedItem } from "@/lib/validation/feed";
+import { catalogJobDetailSchema, type CatalogJobDetail } from "@/lib/validation/feed";
 
-function CatalogDetail({ job, returnTo }: { job: CatalogFeedItem; returnTo: string }) {
+function CatalogDetail({ job, returnTo }: { job: CatalogJobDetail; returnTo: string }) {
   return (
     <div className="stack">
       <section className="card stack">
         <div><p className="muted">{job.companyName}</p><h1>{job.title}</h1><p>{job.roleName ?? "정보 없음"} · {job.locations.join(", ") || "정보 없음"}</p></div>
         <p>{job.experienceText ?? "경력 정보 없음"} · {job.educationText ?? "학력 정보 없음"}</p>
+        {job.lifecycleStatus === "closed" && <p className="badge">종료된 공고</p>}
+        {job.lifecycleStatus === "withdrawn" && <p className="badge">출처 제공 중단</p>}
         {job.sources.map((source) => (
           <div className="source-attribution" key={`${source.provider}:${source.originalUrl}`}>
             <div className="row"><strong>{source.providerName}</strong><a className="touch-target" href={source.originalUrl} target="_blank" rel="noopener noreferrer">원문 보기</a></div>
@@ -27,7 +31,7 @@ function CatalogDetail({ job, returnTo }: { job: CatalogFeedItem; returnTo: stri
         ))}
       </section>
       <Link className="button secondary" href={returnTo}>목록으로 돌아가기</Link>
-      <section className="card"><p>개인 저장과 지원 관리는 다음 단계에서 제공됩니다.</p></section>
+      <PersonalJobControls canonicalJobId={job.id} state={job.personalState} />
     </div>
   );
 }
@@ -46,7 +50,13 @@ export default async function JobDetailPage({ params, searchParams }: { params: 
     if (scenario) {
       const catalogJob = discoveryFeedFixtures.find((job) => job.id === id);
       if (!catalogJob) notFound();
-      return <CatalogDetail job={catalogJob} returnTo={returnTo} />;
+      const personalState = await getE2EPersonalState(user.id, id);
+      const lifecycleStatus = scenario === "closed-saved"
+        ? "closed" as const
+        : scenario === "withdrawn-saved"
+          ? "withdrawn" as const
+          : catalogJob.lifecycleStatus;
+      return <CatalogDetail job={{ ...catalogJob, lifecycleStatus, personalState }} returnTo={returnTo} />;
     }
     const state = getTestJob(id);
     const source = { id, status: id.endsWith("5") ? "unsupported" as const : id.endsWith("4") ? "unreachable" as const : "unknown" as const, lastSuccessAt: id.endsWith("4") ? "2026-08-01T03:00:00Z" : null };

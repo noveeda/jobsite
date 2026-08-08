@@ -55,6 +55,8 @@ export function FeedFilters({ values }: { values: import("@/lib/validation/feed"
       <label>마감<select name="deadline" defaultValue={values.deadline ?? ""}><option value="">전체</option><option value="active">진행 중</option><option value="closingSoon">마감 임박</option><option value="unknown">미확인</option></select></label>
       <label>출처<select name="source" defaultValue={values.source ?? ""}><option value="">전체</option><option value="fixture-page">Fixture Page</option><option value="fixture-token">Fixture Token</option><option value="saramin">사람인</option><option value="jobkorea">잡코리아</option></select></label>
       <label>정렬<select name="sort" defaultValue={values.sort}><option value="posted">최신순</option><option value="deadline">기한 임박순</option></select></label>
+      <label className="checkbox-label"><input type="checkbox" name="saved" value="true" defaultChecked={values.saved} />저장 공고만</label>
+      <label className="checkbox-label"><input type="checkbox" name="includeExcluded" value="true" defaultChecked={values.includeExcluded} />제외 공고 포함</label>
       <div className="row filter-actions"><button className="button" type="submit">적용</button><Link className="button secondary" href="/jobs">전체 초기화</Link></div>
     </form>
   );

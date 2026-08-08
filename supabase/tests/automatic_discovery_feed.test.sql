@@ -181,8 +181,8 @@ select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-00000000f001
 select is((pg_temp.call_catalog_feed('{}'::jsonb, 30)->>'total')::integer, 7, 'current consent receives active jobs plus only recent stale jobs');
 select is(
   (select jsonb_agg(key order by key) from jsonb_object_keys(pg_temp.call_catalog_detail('00000000-0000-4000-8000-00000000f101')) as key),
-  '["careerMaxYears","careerMinYears","companyName","deadlineAt","deadlineKind","educationText","employmentTypes","experienceText","id","industry","jobCategories","lastObservedAt","lifecycleStatus","locations","postedAt","roleName","salaryText","sources","title"]'::jsonb,
-  'catalog detail exposes only normalized display keys'
+  '["careerMaxYears","careerMinYears","companyName","deadlineAt","deadlineKind","educationText","employmentTypes","experienceText","id","industry","jobCategories","lastObservedAt","lifecycleStatus","locations","personalState","postedAt","roleName","salaryText","sources","title"]'::jsonb,
+  'catalog detail exposes only normalized display keys and the caller personal overlay'
 );
 select is(
   (select jsonb_agg(key order by key) from jsonb_object_keys(pg_temp.call_catalog_detail('00000000-0000-4000-8000-00000000f101')#>'{sources,0}') as key),
@@ -249,7 +249,7 @@ select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-00000000f001
 select is(jsonb_array_length(pg_temp.call_catalog_feed('{}'::jsonb, 2)->'items'), 7, 'invalid take below 30 resets to 30');
 select is((pg_temp.call_catalog_feed('{}'::jsonb, 31)->>'total')::integer, 7, 'invalid non-multiple take preserves the pre-limit total');
 select is((pg_temp.call_catalog_feed('{}'::jsonb, 31)->>'hasMore')::boolean, false, 'invalid non-multiple take cannot reduce the page below 30');
-select is((pg_temp.call_catalog_feed('{"includeExcluded":true}'::jsonb, 30)->>'total')::integer, 0, 'includeExcluded fails closed before personal state exists');
+select is((pg_temp.call_catalog_feed('{"includeExcluded":true}'::jsonb, 30)->>'total')::integer, 7, 'includeExcluded remains the common feed when the caller has no excluded state');
 select is((pg_temp.call_catalog_feed('{"saved":true}'::jsonb, 30)->>'total')::integer, 0, 'saved-only fails closed before personal state exists');
 select is((pg_temp.call_catalog_feed('[]'::jsonb, 30)->>'total')::integer, 0, 'malformed root filters fail closed');
 select is((pg_temp.call_catalog_feed('{"saved":"true"}'::jsonb, 30)->>'total')::integer, 0, 'malformed personal boolean fails closed');
@@ -277,7 +277,7 @@ select is((select jsonb_agg(source->>'provider') from jsonb_array_elements(pg_te
 create temporary table feed_payload(result jsonb) on commit drop;
 insert into feed_payload select pg_temp.call_catalog_feed('{}'::jsonb, 30);
 select is((select jsonb_agg(key order by key) from jsonb_object_keys((select result from feed_payload)) as key), '["enabledProviderCount","hasMore","items","missingCounts","providerHealth","total"]'::jsonb, 'top-level payload has only allowed keys');
-select is((select jsonb_agg(key order by key) from jsonb_object_keys((select result->'items'->0 from feed_payload)) as key), '["careerMaxYears","careerMinYears","companyName","deadlineAt","deadlineKind","educationText","employmentTypes","experienceText","id","industry","jobCategories","lastObservedAt","lifecycleStatus","locations","postedAt","roleName","salaryText","sources","title"]'::jsonb, 'feed item has only normalized display keys');
+select is((select jsonb_agg(key order by key) from jsonb_object_keys((select result->'items'->0 from feed_payload)) as key), '["careerMaxYears","careerMinYears","companyName","deadlineAt","deadlineKind","educationText","employmentTypes","experienceText","id","industry","jobCategories","lastObservedAt","lifecycleStatus","locations","personalState","postedAt","roleName","salaryText","sources","title"]'::jsonb, 'feed item has only normalized display keys and the caller personal overlay');
 select is((select jsonb_agg(key order by key) from jsonb_object_keys((select result->'items'->0->'sources'->0 from feed_payload)) as key), '["attribution","lastObservedAt","originalUrl","provider","providerName"]'::jsonb, 'source payload has only safe attribution keys');
 select is((select jsonb_agg(key order by key) from jsonb_object_keys((select result->'items'->0->'sources'->0->'attribution' from feed_payload)) as key), '["href","text"]'::jsonb, 'attribution exposes only text and href');
 select is((select jsonb_agg(key order by key) from jsonb_object_keys((select result->'providerHealth'->0 from feed_payload)) as key), '["code","displayName","enabled","errorCode","lastSuccessAt"]'::jsonb, 'provider health has only its safe allowlist');

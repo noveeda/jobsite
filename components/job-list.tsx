@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { JobListItem } from "@/app/(dashboard)/jobs/queries";
 import { ProviderAttribution } from "@/components/provider-attribution";
 import { deadlineState } from "@/lib/domain/deadlines";
+import { PersonalListControls } from "@/components/personal-job-controls";
 
 const observedDate = new Intl.DateTimeFormat("ko-KR", {
   dateStyle: "medium",
@@ -77,7 +78,13 @@ export function CatalogJobList({ jobs, returnTo }: { jobs: import("@/lib/validat
                 </div>
               ))}
             </div>
-            <div className="job-meta"><span>{deadline.label}</span>{job.lifecycleStatus === "stale" && <span>최신성 확인 중</span>}</div>
+            <div className="job-meta">
+              <span>{deadline.label}</span>
+              {job.lifecycleStatus === "stale" && <span>최신성 확인 중</span>}
+              {job.lifecycleStatus === "closed" && <span>종료된 공고</span>}
+              {job.lifecycleStatus === "withdrawn" && <span>출처 제공 중단</span>}
+            </div>
+            <PersonalListControls canonicalJobId={job.id} jobTitle={job.title} state={job.personalState} />
           </article>
         );
       })}

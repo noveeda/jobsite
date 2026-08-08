@@ -64,7 +64,7 @@
 - Canonical repair: provenance, lifecycle, paired career/deadline fields, postedAt, and strictly validated field-level survivor fallbacks are repaired even when source rows already satisfy the scrub postcondition
 - Purge idempotency/audit: source and canonical full postcondition returns 0 without audit; canonical-only repair records `cursor.canonicalRepaired` while preserving source-only count semantics
 - Purge security: service-role-only `SECURITY DEFINER` wrapper with a fixed search path; the legacy unchecked function is revoked and never called
-- Purge pgTAP: 46/46 PASS; one expected TODO remains for personal_job_states purge survival after T041
+- Purge pgTAP: 47/47 PASS; personal_job_states row, status, and memo survive purge
 - Core + ingest regression pgTAP: 64/64 PASS
 - Full pgTAP: 14 files, 286 tests, all successful
 - Independent purge review: 0 Critical, 0 High, 0 Medium findings
@@ -76,6 +76,27 @@
 - ESLint: PASS
 - Production build: PASS
 - git diff --check: PASS (Windows line-ending warnings only)
-- T018 remains open until purge postconditions and personal_job_states survival are complete
+- T018 is complete; ingest and purge postconditions include personal_job_states survival
 - T020 remains open until approved Saramin attribution can run without fixme
 - Linux/Ubuntu gates remain explicitly scheduled in T071–T072
+
+## T018, T037–T046 — Personal catalog state
+
+- Date: 2026-08-09 (Asia/Seoul)
+- Progress: 45/76 tasks complete
+- Data model: sparse `personal_job_states` overlay with owner-only ENABLE/FORCE RLS, account cascade, catalog retention, seven application states, 10,000-character memo limit, and next-action timestamp
+- Feed behavior: save, exclude/restore, saved-only, closed/withdrawn retention, deterministic common ordering, and six faceted missing-value counts apply personal policy before count, sort, and limit
+- Pagination regression: 1,021 newer excluded fixtures do not truncate later visible jobs; total and hasMore remain accurate through take 1020
+- Detail/action security: latest-consent authenticated RPC, revoked common RPCs, current-user Server Actions, generic failure responses, and no memo in list payloads
+- UX: status badges, editable memo/next action, explicit offline retry, per-card accessible exclusion names, 44×44 controls, and UTC/local datetime round-trip across standard and daylight-saving offsets
+- Purge safety: JSON array functions receive CASE-guarded arrays; scalar/object source values cannot abort the purge transaction; personal state survives source scrub
+- Backup compatibility: v1 remains GREEN; eight v2 restore assertions are explicit TODO until dependency-gated T047 after T051, T060, and T063
+- `npm run verify`: PASS — ESLint, TypeScript, 37 unit files / 257 tests, Next.js 16.3.0 production build
+- Full pgTAP: PASS — 17 files / 348 tests, including the eight expected T047 TODO assertions
+- Focused Chromium E2E: PASS — 29/29 across personal tracking, automatic discovery, filters/pagination/focus, accessibility, and manual-registration regression
+- Database lint: PASS — zero findings
+- `git diff --check`: PASS (Windows line-ending warnings only)
+- Independent final review: 0 Critical, 0 High, 0 Medium, 0 Low findings
+- External provider calls: zero; Saramin approval remains pending
+- Remote Supabase database: not modified
+- Compound-engineering fallback: `compound-engineering` skill was unavailable, so reusable root causes, guardrails, and proof commands are persisted in `docs/engineering/lessons-learned.md` and required by `AGENTS.md`

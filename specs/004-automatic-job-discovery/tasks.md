@@ -57,7 +57,7 @@ description: "자동 통합 채용공고 탐색의 의존성 순서 작업 목�
 
 - [X] T016 [P] [US1] Write provider contract tests for page cursors, normalization, quota cost, partial snapshots, and stable errors in tests/unit/provider-adapter.test.ts
 - [X] T017 [P] [US1] Write collector tests for lease idempotency, bounded retry, hourly no-op before six-hour due time, freshness latency timestamps, provider isolation, threshold degradation, and missing/wrong CRON_SECRET, disabled collector, unsupported method, and zero admin/provider calls on rejection in tests/unit/catalog-collector.test.ts and tests/unit/collector-route.test.ts
-- [ ] T018 [P] [US1] Write pgTAP ingestion tests for upsert identity, conflicting source-value/provenance preservation, partial-run preservation, two-complete-run closure, permission-withdrawal/retention purge, forbidden-field removal, and personal-state survival in supabase/tests/automatic_discovery_ingest.test.sql
+- [X] T018 [P] [US1] Write pgTAP ingestion tests for upsert identity, conflicting source-value/provenance preservation, partial-run preservation, two-complete-run closure, permission-withdrawal/retention purge, forbidden-field removal, and personal-state survival in supabase/tests/automatic_discovery_ingest.test.sql
 - [X] T019 [P] [US1] Replace manual-first E2E assertions with a no-input feed journey covering unauthenticated /jobs and detail redirects, preparing/ready-empty/partial/failed/degraded fixtures, cached-feed retention, threshold branding removal, and operator warning in tests/e2e/job-discovery.spec.ts
 - [ ] T020 [P] [US1] Extend attribution tests for Saramin cards and details without depending on US4 merge behavior in tests/e2e/provider-attribution.spec.ts and tests/unit/provider-attribution.test.ts
 
@@ -108,19 +108,19 @@ description: "자동 통합 채용공고 탐색의 의존성 순서 작업 목�
 
 ### Tests for User Story 3
 
-- [ ] T037 [P] [US3] Write owner-RLS, closed-source preservation, and account-deletion pgTAP tests in supabase/tests/personal_job_states.test.sql
-- [ ] T038 [P] [US3] Write Server Action validation and failed-write recovery tests in tests/unit/personal-job-state.test.ts
-- [ ] T039 [P] [US3] Add save-to-saved-only-view, exclude/restore, status, memo, failed-write feedback, cross-user, and source-closure E2E cases in tests/e2e/application-tracking.spec.ts
-- [ ] T040 [P] [US3] Add backup v1 compatibility and idempotent v2 restore tests in tests/unit/backup.test.ts and supabase/tests/backup_restore_v2.test.sql
+- [X] T037 [P] [US3] Write owner-RLS, closed-source preservation, and account-deletion pgTAP tests in supabase/tests/personal_job_states.test.sql
+- [X] T038 [P] [US3] Write Server Action validation and failed-write recovery tests in tests/unit/personal-job-state.test.ts
+- [X] T039 [P] [US3] Add save-to-saved-only-view, exclude/restore, status, memo, failed-write feedback, cross-user, and source-closure E2E cases in tests/e2e/application-tracking.spec.ts
+- [X] T040 [P] [US3] Add backup v1 compatibility and idempotent v2 restore tests in tests/unit/backup.test.ts and supabase/tests/backup_restore_v2.test.sql
 
 ### Implementation for User Story 3
 
-- [ ] T041 [US3] Add personal_job_states with owner RLS and state-preserving constraints in supabase/migrations/20260808000400_personal_job_states.sql
-- [ ] T042 [US3] Regenerate personal state types in lib/supabase/database.types.ts
-- [ ] T043 [P] [US3] Add personal-state input validation in lib/validation/personal-job-state.ts
-- [ ] T044 [US3] Implement save, exclude/restore, status, memo, and next-action Server Actions in app/(dashboard)/jobs/personal-actions.ts
-- [ ] T045 [US3] Overlay sparse personal state and saved-only filtering without changing the common deterministic feed sort in app/(dashboard)/jobs/queries.ts and app/(dashboard)/jobs/[id]/page.tsx
-- [ ] T046 [US3] Add personal controls, status badges, saved-only view/count, failure feedback, excluded-job management, and 44px save/restore controls in components/job-detail.tsx, components/job-list.tsx, components/filters.tsx, app/(dashboard)/jobs/page.tsx, and app/globals.css
+- [X] T041 [US3] Add personal_job_states with owner RLS and state-preserving constraints in supabase/migrations/20260808000400_personal_job_states.sql
+- [X] T042 [US3] Regenerate personal state types in lib/supabase/database.types.ts
+- [X] T043 [P] [US3] Add personal-state input validation in lib/validation/personal-job-state.ts
+- [X] T044 [US3] Implement save, exclude/restore, status, memo, and next-action Server Actions in app/(dashboard)/jobs/personal-actions.ts
+- [X] T045 [US3] Overlay sparse personal state and saved-only filtering without changing the common deterministic feed sort in app/(dashboard)/jobs/queries.ts and app/(dashboard)/jobs/[id]/page.tsx
+- [X] T046 [US3] Add personal controls, status badges, saved-only view/count, failure feedback, excluded-job management, and 44px save/restore controls in components/job-detail.tsx, components/job-list.tsx, components/filters.tsx, app/(dashboard)/jobs/page.tsx, and app/globals.css
 - [ ] T047 [US3] After T051, T060, and T063, implement backup v2 personal-state export/validate/transactional restore while retaining v1 import in lib/domain/backup.ts, lib/validation/backup.ts, app/api/export/route.ts, app/api/import/validate/route.ts, app/api/import/commit/route.ts, and the immutable supabase/migrations/20260808000700_backup_v2.sql
 
 **Checkpoint**: US3 personal data is isolated, recoverable, and independent of shared posting lifecycle.

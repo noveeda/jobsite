@@ -32,6 +32,7 @@ export const discoveryFeedFixtures: readonly CatalogFeedItem[] = catalogFixtures
     deadlineAt: fixture.expiresAt,
     lifecycleStatus: "active" as const,
     lastObservedAt: fixture.modifiedAt,
+    personalState: { saved: false, excluded: false, applicationStatus: "unreviewed" as const, nextActionAt: null },
     sources: [{
       provider: fixture.providerCode,
       providerName: providerNames[fixture.providerCode],
@@ -71,6 +72,7 @@ const performanceFeedFixtures: readonly CatalogFeedItem[] = Array.from({ length:
     deadlineAt: null,
     lifecycleStatus: "active" as const,
     lastObservedAt: observedAt,
+    personalState: { saved: false, excluded: false, applicationStatus: "unreviewed" as const, nextActionAt: null },
     sources: [{
       provider: "fixture-page",
       providerName: providerNames["fixture-page"],
@@ -84,7 +86,7 @@ const performanceFeedFixtures: readonly CatalogFeedItem[] = Array.from({ length:
   };
 });
 
-function matches(item: CatalogFeedItem, query: FeedQuery) {
+export function matchesDiscoveryItem(item: CatalogFeedItem, query: FeedQuery) {
   const text = `${item.title} ${item.companyName} ${item.roleName ?? ""}`.toLocaleLowerCase("ko");
   const employment = query.employment === "permanent" ? "정규직" : query.employment === "contract" ? "계약직" : query.employment === "intern" ? "인턴" : query.employment;
   const deadline = item.deadlineAt ? Date.parse(item.deadlineAt) : null;
@@ -118,7 +120,7 @@ export function makeDiscoveryFeedFixture(scenario: DiscoveryScenario, query: Fee
     : scenario === "degraded"
       ? discoveryFeedFixtures.filter(({ sources }) => sources[0].provider === "fixture-page")
       : discoveryFeedFixtures;
-  const filtered = base.filter((item) => matches(item, query));
+  const filtered = base.filter((item) => matchesDiscoveryItem(item, query));
   const items = filtered.slice(0, query.take);
   const failed = scenario === "failed-cached" || scenario === "failed-empty";
   const unavailable = "SOURCE_UNAVAILABLE" as const;

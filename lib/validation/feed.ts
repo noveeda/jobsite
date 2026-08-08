@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { personalApplicationStatusSchema } from "@/lib/validation/personal-job-state";
+
 const httpsUrl = z.string().url().refine((value) => new URL(value).protocol === "https:");
 
 const catalogSourceSchema = z.object({
@@ -21,7 +23,7 @@ export const providerErrorCodeSchema = z.enum([
   "SOURCE_TERMS_BLOCKED",
 ]);
 
-export const catalogFeedItemSchema = z.object({
+const catalogDisplayItemSchema = z.object({
   id: z.string().uuid(),
   title: z.string().trim().min(1).max(300),
   companyName: z.string().trim().min(1).max(300),
@@ -38,12 +40,27 @@ export const catalogFeedItemSchema = z.object({
   postedAt: z.string().datetime({ offset: true }).nullable(),
   deadlineKind: z.enum(["fixed", "rolling", "until_hired", "unknown"]),
   deadlineAt: z.string().datetime({ offset: true }).nullable(),
-  lifecycleStatus: z.enum(["active", "stale"]),
+  lifecycleStatus: z.enum(["active", "stale", "closed", "withdrawn"]),
   lastObservedAt: z.string().datetime({ offset: true }),
   sources: z.array(catalogSourceSchema).min(1),
 }).strict();
 
-export const catalogJobDetailSchema = catalogFeedItemSchema.nullable();
+export const catalogPersonalStateSchema = z.object({
+  saved: z.boolean(),
+  excluded: z.boolean(),
+  applicationStatus: personalApplicationStatusSchema,
+  nextActionAt: z.string().datetime({ offset: true }).nullable(),
+}).strict();
+
+export const catalogFeedItemSchema = catalogDisplayItemSchema.extend({
+  personalState: catalogPersonalStateSchema,
+});
+
+export const catalogJobDetailSchema = catalogDisplayItemSchema.extend({
+  personalState: catalogPersonalStateSchema.extend({
+    memo: z.string().max(10_000),
+  }),
+}).nullable();
 
 export const catalogFeedResponseSchema = z.object({
   items: z.array(catalogFeedItemSchema),
@@ -77,6 +94,7 @@ export const catalogFeedResponseSchema = z.object({
 });
 
 export type CatalogFeedItem = z.infer<typeof catalogFeedItemSchema>;
+export type CatalogJobDetail = NonNullable<z.infer<typeof catalogJobDetailSchema>>;
 export type CatalogFeedResponse = z.infer<typeof catalogFeedResponseSchema>;
 
 const pageSize = 30;

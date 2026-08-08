@@ -7,6 +7,31 @@ export type Json =
   | Json[]
 
 export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       account_consents: {
@@ -458,6 +483,50 @@ export type Database = {
           },
         ]
       }
+      personal_job_states: {
+        Row: {
+          application_status: string
+          canonical_job_id: string
+          created_at: string
+          excluded: boolean
+          memo: string
+          next_action_at: string | null
+          saved: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          application_status?: string
+          canonical_job_id: string
+          created_at?: string
+          excluded?: boolean
+          memo?: string
+          next_action_at?: string | null
+          saved?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          application_status?: string
+          canonical_job_id?: string
+          created_at?: string
+          excluded?: boolean
+          memo?: string
+          next_action_at?: string | null
+          saved?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_job_states_canonical_job_id_fkey"
+            columns: ["canonical_job_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       provider_daily_usage: {
         Row: {
           provider_code: string
@@ -778,7 +847,12 @@ export type Database = {
         Args: { target_filters?: Json; target_take?: number }
         Returns: Json
       }
-      get_catalog_job_detail: {
+      get_catalog_feed_common: {
+        Args: { target_filters?: Json; target_take?: number }
+        Returns: Json
+      }
+      get_catalog_job_detail: { Args: { target_id: string }; Returns: Json }
+      get_catalog_job_detail_common: {
         Args: { target_id: string }
         Returns: Json
       }
@@ -805,6 +879,10 @@ export type Database = {
         Returns: Json
       }
       purge_source_provider_data: {
+        Args: { target_provider_code: string; target_reason: string }
+        Returns: number
+      }
+      purge_source_provider_data_unchecked: {
         Args: { target_provider_code: string; target_reason: string }
         Returns: number
       }
@@ -991,6 +1069,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       application_status: [

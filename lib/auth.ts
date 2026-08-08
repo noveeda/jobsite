@@ -1,5 +1,6 @@
 import { isE2EBypass, validateServerEnvironment } from "@/lib/environment";
 import { getDiscoveryScenario } from "@/lib/e2e/automatic-discovery";
+import { getE2EUserId } from "@/lib/e2e/personal-state";
 import { redirect } from "next/navigation";
 import { createClient, hasSupabaseEnvironment } from "@/lib/supabase/server";
 
@@ -18,7 +19,7 @@ export function requireOperator(
 export async function requireUser() {
   if (isE2EBypass()) {
     if (await getDiscoveryScenario() === "anonymous") redirect("/login");
-    return { id: "00000000-0000-4000-8000-000000000001", email: "e2e@example.com" };
+    return { id: await getE2EUserId() ?? "00000000-0000-4000-8000-000000000001", email: "e2e@example.com" };
   }
   if (!hasSupabaseEnvironment()) redirect("/login?error=config");
   const supabase = await createClient();

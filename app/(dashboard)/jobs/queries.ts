@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getDiscoveryScenario } from "@/lib/e2e/automatic-discovery";
-import { makeDiscoveryFeedFixture } from "@/lib/e2e/discovery-feed";
+import { discoveryFeedFixtures, makeDiscoveryFeedFixture, matchesDiscoveryItem } from "@/lib/e2e/discovery-feed";
+import { getE2EPersonalState, getE2EUserId } from "@/lib/e2e/personal-state";
 import { isE2EBypass } from "@/lib/environment";
 import {
   catalogFeedResponseSchema,
@@ -40,6 +41,50 @@ export async function getCatalogFeed(input: FeedQueryInput): Promise<CatalogFeed
   let raw: unknown;
   if (scenario) {
     raw = makeDiscoveryFeedFixture(scenario, query);
+    const userId = await getE2EUserId();
+    if (userId) {
+      const fixture = raw as CatalogFeedResponse;
+      const fixtureCandidates = query.saved
+        ? discoveryFeedFixtures.filter((item) => matchesDiscoveryItem(item, query))
+        : fixture.items;
+      const personalized = await Promise.all(fixtureCandidates.map(async (item) => {
+        const state = await getE2EPersonalState(userId, item.id);
+        const lifecycleStatus = item.id === "10000000-0000-4000-8000-000000000001"
+          ? scenario === "closed-saved"
+            ? "closed" as const
+            : scenario === "withdrawn-saved"
+              ? "withdrawn" as const
+              : item.lifecycleStatus
+          : item.lifecycleStatus;
+        return {
+          ...item,
+          lifecycleStatus,
+          personalState: {
+            saved: state.saved,
+            excluded: state.excluded,
+            applicationStatus: state.applicationStatus,
+            nextActionAt: state.nextActionAt,
+          },
+        };
+      }));
+      const visible = personalized.filter((item) =>
+        (query.includeExcluded || !item.personalState.excluded)
+        && (!query.saved || item.personalState.saved)
+        && (
+          item.lifecycleStatus === "active"
+          || item.lifecycleStatus === "stale"
+          || (query.saved && item.personalState.saved)
+          || (query.includeExcluded && item.personalState.excluded)
+        )
+      );
+      const removed = personalized.length - visible.length;
+      raw = {
+        ...fixture,
+        items: visible.slice(0, query.take),
+        total: query.saved ? visible.length : Math.max(0, fixture.total - removed),
+        hasMore: query.saved ? visible.length > query.take : fixture.hasMore,
+      };
+    }
   } else {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("get_catalog_feed", {
