@@ -257,6 +257,15 @@ npx vercel@latest --prod
 
 운영 /api/health와 보안 헤더를 같은 명령으로 검사하고, 스모크의 1~6단계를 운영용 테스트 계정으로 반복한다. 운영 커넥터는 승인 증빙과 quota 감시가 준비된 경우에만 켠다.
 
+### 수집 스케줄은 별도 승인 뒤에만 활성화
+
+`20260809000900_schedule_collection.sql`은 기본으로 cron job을 만들지 않는다. production에서만 별도의 service-role 운영 절차로 설정을 한 번 provision하고, Vault에 다음 두 값이 각각 하나씩 있는지 확인한 뒤 활성화한다.
+
+- 배포 origin: production `APP_BASE_URL`과 문자 단위로 같은 HTTPS origin (경로·쿼리·fragment·자격증명 없음)
+- cron bearer secret: `/api/cron/collect`의 `CRON_SECRET`과 같은 서버 전용 값
+
+production marker와 Vault secret 이름·값은 Git, 로그, 티켓, 채팅에 남기지 않는다. 활성화 전에는 staging에서 보호된 수동 요청으로 collector의 due check, quota, lease 동작만 증명한다. cron은 매시간 helper만 호출하며, 실제 provider fetch 여부는 기존 6시간 due check가 결정한다.
+
 ## 9. 롤백과 출시 판정
 
 애플리케이션만 실패하고 migration이 이전 코드와 호환되면 직전 정상 deployment를 즉시 복구한다.

@@ -100,3 +100,11 @@
 - External provider calls: zero; Saramin approval remains pending
 - Remote Supabase database: not modified
 - Compound-engineering fallback: `compound-engineering` skill was unavailable, so reusable root causes, guardrails, and proof commands are persisted in `docs/engineering/lessons-learned.md` and required by `AGENTS.md`
+
+## U4 — Dormant hosted collection schedule
+
+- Migration `20260809000900_schedule_collection.sql` creates no cron job by default and is service-role-only for provision, enable, and disable operations.
+- Local, test, preview, and staging enablement return a no-op; production requires an immutable provisioned marker, an exact HTTPS origin, one Vault URL value equal to that origin, and one non-empty Vault cron secret.
+- The stored cron command is exactly `select public.invoke_collection_schedule();`; the helper reads Vault internally, returns `void`, and never logs or returns its secret.
+- `supabase/tests/schedule_collection.test.sql` uses only transaction-local fake cron/Vault fixture values. It creates no hosted schedule, provider request, or real secret.
+- Operator evidence remains required before production enablement: approved source gates, protected staging collector smoke, health/OAuth validation, quota/lease review, and a documented disable/rollback owner.

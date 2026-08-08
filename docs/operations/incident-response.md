@@ -11,6 +11,7 @@
 - 승인되지 않은 provider connector는 장애 대응 중에도 켜지 않는다.
 - 데이터 손상 가능성이 있으면 쓰기 복구보다 먼저 새 배포와 migration을 중단하고 관리형 backup 시점을 확보한다.
 - 모든 시각은 UTC ISO 8601로 기록한다.
+- 수집 이상 시 provider를 재시도하기 전에 production collection schedule을 먼저 disable한다. cron command, Vault 값, Authorization header는 조회·복사·기록하지 않는다.
 
 ## 2. 심각도와 최초 대응 시간
 

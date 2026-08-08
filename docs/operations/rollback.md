@@ -15,6 +15,7 @@
 - 계정 간 접근, 데이터 삭제·변조, Auth/public row 불일치
 - provider 호출이 승인·quota·출처 조건을 위반할 가능성
 - production에 E2E_BYPASS_AUTH 또는 잘못된 환경별 credential이 설정됨
+- collection schedule이 예정하지 않은 요청을 만들거나 Vault/cron 설정 불일치가 의심됨
 
 데이터 노출·손상이나 secret 노출은 먼저 [incident-response.md](./incident-response.md)의 SEV-1 절차를 시작한다.
 
