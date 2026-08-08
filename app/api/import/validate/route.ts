@@ -27,9 +27,13 @@ export async function POST(request: Request) {
   const validation = validateBackupText(text);
   if (!validation.success) return NextResponse.json({ code: validation.code, message: "유효하지 않은 백업입니다.", errors: validation.errors, requestId: id }, { status: validation.code === "BACKUP_TOO_LARGE" ? 413 : 422 });
 
+  const payload = validation.data;
+  const isV1 = "schemaVersion" in payload;
+  const legacy = isV1 ? payload : payload.legacy;
+
   let conflicts = 1;
   if (!isE2EBypass()) {
-    const ids = validation.data.jobs.map((job) => job.id);
+    const ids = legacy.jobs.map((job) => job.id);
     if (ids.length === 0) conflicts = 0;
     else {
       const { count, error } = await supabase.from("jobs").select("id", { count: "exact", head: true }).eq("user_id", user.id).in("id", ids);
@@ -40,5 +44,8 @@ export async function POST(request: Request) {
       conflicts = count ?? 0;
     }
   }
-  return NextResponse.json({ valid: true, schemaVersion: validation.data.schemaVersion, counts: { jobs: validation.data.jobs.length, sources: validation.data.sources.length, duplicatePairs: validation.data.duplicatePairs.length, revisions: validation.data.revisions.length }, conflicts, warnings: [] }, { headers: { "x-request-id": id } });
+  if (isV1) {
+    return NextResponse.json({ valid: true, schemaVersion: payload.schemaVersion, counts: { jobs: legacy.jobs.length, sources: legacy.sources.length, duplicatePairs: legacy.duplicatePairs.length, revisions: legacy.revisions.length, personalStates: 0, duplicateDecisions: 0, manualLinks: 0 }, conflicts, warnings: [] }, { headers: { "x-request-id": id } });
+  }
+  return NextResponse.json({ valid: true, schemaVersion: payload.version, counts: { jobs: legacy.jobs.length, sources: legacy.sources.length, duplicatePairs: legacy.duplicatePairs.length, revisions: legacy.revisions.length, personalStates: payload.personalStates.length, duplicateDecisions: payload.duplicateDecisions.length, manualLinks: payload.manualLinks.length }, conflicts, warnings: ["버전 2 복원은 아직 준비 중입니다."] }, { headers: { "x-request-id": id } });
 }

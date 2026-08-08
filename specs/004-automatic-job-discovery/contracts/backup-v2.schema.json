@@ -5,45 +5,47 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "exportedAt", "legacy", "personalStates", "duplicateDecisions", "manualLinks"],
+  "$defs": {
+    "sourceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "externalId", "originalUrl"],
+      "properties": {
+        "provider": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{1,39}$" },
+        "externalId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "originalUrl": { "type": "string", "format": "uri", "maxLength": 2048, "pattern": "^https://" }
+      }
+    },
+    "safeDisplay": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string", "maxLength": 300 },
+        "companyName": { "type": "string", "maxLength": 200 },
+        "roleName": { "type": "string", "maxLength": 200 },
+        "locations": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 100 } },
+        "postedAt": { "type": "string", "format": "date-time" },
+        "deadlineAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
   "properties": {
     "version": { "const": 2 },
     "exportedAt": { "type": "string", "format": "date-time" },
-    "legacy": {
-      "description": "Existing v1-compatible payload",
-      "type": "object"
-    },
+    "legacy": { "type": "object", "description": "Closed v1-compatible payload; v1 statuses remain legacy data." },
     "personalStates": {
       "type": "array",
       "maxItems": 20000,
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["sourceRef", "saved", "excluded", "applicationStatus", "memo"],
+        "required": ["sourceRef", "updatedAt"],
         "properties": {
-          "sourceRef": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["provider", "externalId", "originalUrl"],
-            "properties": {
-              "provider": { "type": "string", "minLength": 1, "maxLength": 50 },
-              "externalId": { "type": "string", "minLength": 1, "maxLength": 200 },
-              "originalUrl": { "type": "string", "format": "uri", "pattern": "^https://" }
-            }
-          },
-          "displaySnapshot": {
-            "type": ["object", "null"],
-            "description": "Only fields allowed by provider retention policy",
-            "additionalProperties": false,
-            "properties": {
-              "title": { "type": "string", "maxLength": 300 },
-              "companyName": { "type": "string", "maxLength": 200 }
-            }
-          },
+          "sourceRef": { "$ref": "#/$defs/sourceRef" },
+          "displaySnapshot": { "$ref": "#/$defs/safeDisplay" },
           "saved": { "type": "boolean" },
           "excluded": { "type": "boolean" },
-          "applicationStatus": {
-            "enum": ["unreviewed", "planned", "applied", "interviewing", "offered", "rejected", "withdrawn"]
-          },
+          "applicationStatus": { "enum": ["unreviewed", "planned", "applied", "interviewing", "offered", "rejected", "withdrawn"] },
           "memo": { "type": "string", "maxLength": 10000 },
           "nextActionAt": { "type": ["string", "null"], "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" }
@@ -55,12 +57,15 @@
       "maxItems": 20000,
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "required": ["leftSourceRef", "rightSourceRef", "decision"],
         "properties": {
-          "leftSourceRef": { "type": "object" },
-          "rightSourceRef": { "type": "object" },
+          "leftSourceRef": { "$ref": "#/$defs/sourceRef" },
+          "rightSourceRef": { "$ref": "#/$defs/sourceRef" },
           "decision": { "enum": ["merged", "separate"] },
-          "representativeSourceRef": { "type": ["object", "null"] }
+          "leftDisplaySnapshot": { "$ref": "#/$defs/safeDisplay" },
+          "rightDisplaySnapshot": { "$ref": "#/$defs/safeDisplay" },
+          "representativeSourceRef": { "oneOf": [{ "$ref": "#/$defs/sourceRef" }, { "type": "null" }] }
         }
       }
     },
@@ -69,10 +74,11 @@
       "maxItems": 20000,
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "required": ["legacyJobId", "sourceRef"],
         "properties": {
           "legacyJobId": { "type": "string", "format": "uuid" },
-          "sourceRef": { "type": "object" }
+          "sourceRef": { "$ref": "#/$defs/sourceRef" }
         }
       }
     }

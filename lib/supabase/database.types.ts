@@ -1107,6 +1107,10 @@ export type Database = {
         Args: { target_provider_code: string; target_reason: string }
         Returns: boolean
       }
+      export_backup_v2_overlays: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_catalog_feed: {
         Args: { target_filters?: Json; target_take?: number }
         Returns: Json

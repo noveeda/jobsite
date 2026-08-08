@@ -1,5 +1,5 @@
 begin;
-select plan(14);
+select plan(20);
 
 insert into auth.users(id, aud, role, email)
 values
@@ -104,6 +104,54 @@ $json$::jsonb);
 
 grant select on table backup_v1_fixture, backup_v2_fixture to authenticated;
 
+insert into public.jobs(id, user_id, title, company_name, application_status, memo)
+values (
+  '30000000-0000-4000-8000-0000000000c1',
+  '00000000-0000-4000-8000-0000000000c1',
+  'Backup v2 manual link',
+  'Owner private company',
+  'applied',
+  'Private legacy memo'
+);
+insert into public.manual_catalog_links(
+  user_id, manual_job_id, source_posting_id, canonical_job_id,
+  provider_code, external_id, original_url
+)
+values (
+  '00000000-0000-4000-8000-0000000000c1',
+  '30000000-0000-4000-8000-0000000000c1',
+  '20000000-0000-4000-8000-0000000000c1',
+  '10000000-0000-4000-8000-0000000000c1',
+  'backup-v2-fixture',
+  'backup-source-1',
+  'https://example.com/jobs/backup-source-1'
+);
+insert into public.unresolved_source_overlays(
+  user_id, provider_code, external_id, original_url, state_payload, safe_display
+)
+values (
+  '00000000-0000-4000-8000-0000000000c1',
+  'backup-v2-fixture', 'unresolved-source-1', 'https://example.com/jobs/unresolved-source-1',
+  '{"saved":true,"memo":"Unresolved owner state"}',
+  '{"title":"Unresolved title","companyName":"Unresolved company"}'
+), (
+  '00000000-0000-4000-8000-0000000000d1',
+  'backup-v2-fixture', 'neighbor-source', 'https://example.com/jobs/neighbor-source',
+  '{"saved":true}', '{"title":"Neighbor private title"}'
+);
+insert into public.unresolved_duplicate_overlays(
+  user_id,
+  left_provider_code, left_external_id, left_original_url,
+  right_provider_code, right_external_id, right_original_url,
+  decision, left_safe_display, right_safe_display
+)
+values (
+  '00000000-0000-4000-8000-0000000000c1',
+  'backup-v2-fixture', 'backup-source-1', 'https://example.com/jobs/backup-source-1',
+  'backup-v2-fixture', 'unresolved-source-2', 'https://example.com/jobs/unresolved-source-2',
+  'merge', '{"title":"Left safe title"}', '{"title":"Right safe title"}'
+);
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-0000000000c1', true);
 
@@ -114,6 +162,39 @@ select lives_ok(
 select lives_ok(
   $$select public.commit_backup_restore((select payload from backup_v1_fixture), '30000000-0000-4000-8000-0000000000c1')$$,
   'backup v1 commit remains supported after adding v2'
+);
+select has_function(
+  'public',
+  'export_backup_v2_overlays',
+  array[]::text[],
+  'owner-scoped v2 export projection exists without exposing private tables directly'
+);
+select ok(
+  has_function_privilege('authenticated', 'public.export_backup_v2_overlays()', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.export_backup_v2_overlays()', 'EXECUTE')
+  and not has_function_privilege('service_role', 'public.export_backup_v2_overlays()', 'EXECUTE'),
+  'only authenticated callers can project a portable v2 overlay'
+);
+select is(
+  public.export_backup_v2_overlays() #>> '{manualLinks,0,legacyJobId}',
+  '30000000-0000-4000-8000-0000000000c1',
+  'owner export contains a portable manual link but no catalog UUID'
+);
+select is(
+  jsonb_array_length(public.export_backup_v2_overlays() -> 'personalStates')::integer,
+  1,
+  'owner export contains its unresolved personal overlay without neighbor data'
+);
+select is(
+  right(public.export_backup_v2_overlays() #>> '{personalStates,0,updatedAt}', 1),
+  'Z',
+  'owner export normalizes overlay timestamps to the strict portable UTC format'
+);
+select ok(
+  public.export_backup_v2_overlays()::text not like '%Neighbor private title%'
+  and public.export_backup_v2_overlays()::text not like '%source_values%'
+  and public.export_backup_v2_overlays()::text not like '%candidateId%',
+  'owner export omits other-user data, raw source values, and target-local identifiers'
 );
 reset role;
 select is(

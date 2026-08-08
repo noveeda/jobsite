@@ -137,8 +137,90 @@ export const backupSchemaV1 = z.strictObject({
 });
 
 export type BackupV1 = z.infer<typeof backupSchemaV1>;
+const sourceRefSchema = z.strictObject({
+  provider: z.string().regex(/^[a-z][a-z0-9_-]{1,39}$/),
+  externalId: z.string().min(1).max(200).refine((value) => value.trim() === value, "앞뒤 공백은 허용되지 않습니다."),
+  originalUrl: z.url().max(2048).refine((value) => {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password;
+  }, "자격 증명 없는 HTTPS URL만 허용됩니다."),
+});
+
+const safeDisplaySchema = z.strictObject({
+  title: z.string().max(300).optional(),
+  companyName: z.string().max(200).optional(),
+  roleName: z.string().max(200).optional(),
+  locations: z.array(z.string().max(100)).max(20).optional(),
+  postedAt: isoDate.optional(),
+  deadlineAt: isoDate.optional(),
+});
+
+const catalogApplicationStatus = z.enum(["unreviewed", "planned", "applied", "interviewing", "offered", "rejected", "withdrawn"]);
+const sourceReferenceKey = (sourceRef: z.infer<typeof sourceRefSchema>) => `${sourceRef.provider}\u0000${sourceRef.externalId}\u0000${sourceRef.originalUrl}`;
+
+const personalStateSchema = z.strictObject({
+  sourceRef: sourceRefSchema,
+  displaySnapshot: safeDisplaySchema.optional(),
+  saved: z.boolean().optional(),
+  excluded: z.boolean().optional(),
+  applicationStatus: catalogApplicationStatus.optional(),
+  memo: z.string().max(10000).optional(),
+  nextActionAt: nullableDate,
+  updatedAt: isoDate,
+});
+
+const portableDuplicateDecisionSchema = z.strictObject({
+  leftSourceRef: sourceRefSchema,
+  rightSourceRef: sourceRefSchema,
+  decision: z.enum(["merged", "separate"]),
+  leftDisplaySnapshot: safeDisplaySchema.optional(),
+  rightDisplaySnapshot: safeDisplaySchema.optional(),
+  representativeSourceRef: sourceRefSchema.nullable().optional(),
+});
+
+const manualLinkSchema = z.strictObject({
+  legacyJobId: uuid,
+  sourceRef: sourceRefSchema,
+});
+
+export const backupSchemaV2 = z.strictObject({
+  version: z.literal(2),
+  exportedAt: isoDate,
+  legacy: backupSchemaV1,
+  personalStates: z.array(personalStateSchema).max(20000),
+  duplicateDecisions: z.array(portableDuplicateDecisionSchema).max(20000),
+  manualLinks: z.array(manualLinkSchema).max(20000),
+}).superRefine((backup, context) => {
+  const personalStates = new Set<string>();
+  backup.personalStates.forEach((state, index) => {
+    const key = sourceReferenceKey(state.sourceRef);
+    if (personalStates.has(key)) context.addIssue({ code: "custom", path: ["personalStates", index, "sourceRef"], message: "중복 출처 참조입니다." });
+    personalStates.add(key);
+  });
+
+  const decisions = new Set<string>();
+  backup.duplicateDecisions.forEach((decision, index) => {
+    const left = sourceReferenceKey(decision.leftSourceRef);
+    const right = sourceReferenceKey(decision.rightSourceRef);
+    if (left === right) context.addIssue({ code: "custom", path: ["duplicateDecisions", index], message: "중복 결정의 양 끝점은 달라야 합니다." });
+    const key = [left, right].sort().join("\u0001");
+    if (decisions.has(key)) context.addIssue({ code: "custom", path: ["duplicateDecisions", index], message: "중복 출처 쌍입니다." });
+    decisions.add(key);
+  });
+
+  const legacyIds = new Set(backup.legacy.jobs.map((job) => job.id));
+  const manualJobs = new Set<string>();
+  backup.manualLinks.forEach((link, index) => {
+    if (!legacyIds.has(link.legacyJobId)) context.addIssue({ code: "custom", path: ["manualLinks", index, "legacyJobId"], message: "legacy에 없는 수동 공고 참조입니다." });
+    if (manualJobs.has(link.legacyJobId)) context.addIssue({ code: "custom", path: ["manualLinks", index, "legacyJobId"], message: "수동 공고 연결이 중복되었습니다." });
+    manualJobs.add(link.legacyJobId);
+  });
+});
+
+export type BackupV2 = z.infer<typeof backupSchemaV2>;
+export type BackupPayload = BackupV1 | BackupV2;
 export type BackupValidation =
-  | { success: true; data: BackupV1 }
+  | { success: true; data: BackupPayload }
   | { success: false; code: "BACKUP_TOO_LARGE" | "INVALID_JSON" | "UNSUPPORTED_VERSION" | "INVALID_BACKUP"; errors: string[] };
 
 function dangerousPaths(value: unknown, path = "$", found: string[] = []): string[] {
@@ -162,10 +244,15 @@ function bounded(errors: string[]) {
 export function validateBackupValue(value: unknown): BackupValidation {
   const dangerous = dangerousPaths(value);
   if (dangerous.length) return { success: false, code: "INVALID_BACKUP", errors: bounded(dangerous) };
-  if (!value || typeof value !== "object" || (value as { schemaVersion?: unknown }).schemaVersion !== 1) {
+  if (!value || typeof value !== "object") {
     return { success: false, code: "UNSUPPORTED_VERSION", errors: ["지원하지 않는 백업 버전입니다."] };
   }
-  const result = backupSchemaV1.safeParse(value);
+  const result = (value as { schemaVersion?: unknown }).schemaVersion === 1
+    ? backupSchemaV1.safeParse(value)
+    : (value as { version?: unknown }).version === 2
+      ? backupSchemaV2.safeParse(value)
+      : null;
+  if (!result) return { success: false, code: "UNSUPPORTED_VERSION", errors: ["지원하지 않는 백업 버전입니다."] };
   if (!result.success) {
     return {
       success: false,

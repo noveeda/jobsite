@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
-import { backupSchemaV1, type BackupV1 } from "@/lib/validation/backup";
+import { backupSchemaV1, backupSchemaV2, type BackupV1, type BackupV2 } from "@/lib/validation/backup";
+
+const MAX_BACKUP_BYTES = 10 * 1024 * 1024;
 
 const forbidden = /^(?:user_?id|search_document|token|access_?token|refresh_?token|secret|password|credential|api_?key|raw_?body|full_?body)$/i;
 
@@ -17,7 +19,7 @@ function sanitizeObject(value: unknown): Record<string, unknown> {
   );
 }
 
-export async function createPortableBackup(client: SupabaseClient<Database>, userId: string): Promise<BackupV1> {
+async function createLegacyBackup(client: SupabaseClient<Database>, userId: string): Promise<BackupV1> {
   const [jobsResult, sourcesResult, pairsResult, revisionsResult] = await Promise.all([
     client.from("jobs").select("*").eq("user_id", userId).limit(10000),
     client.from("job_sources").select("*").eq("user_id", userId).limit(20000),
@@ -90,4 +92,25 @@ export async function createPortableBackup(client: SupabaseClient<Database>, use
     })),
   };
   return backupSchemaV1.parse(backup);
+}
+
+export async function createPortableBackup(client: SupabaseClient<Database>, userId: string): Promise<BackupV2> {
+  const [legacy, overlaysResult] = await Promise.all([
+    createLegacyBackup(client, userId),
+    client.rpc("export_backup_v2_overlays"),
+  ]);
+  if (overlaysResult.error || !overlaysResult.data || typeof overlaysResult.data !== "object" || Array.isArray(overlaysResult.data)) {
+    throw new Error("개인 백업 오버레이를 읽지 못했습니다.");
+  }
+
+  const backup = backupSchemaV2.parse({
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    legacy,
+    ...overlaysResult.data,
+  });
+  if (new TextEncoder().encode(JSON.stringify(backup)).byteLength > MAX_BACKUP_BYTES) {
+    throw new Error("백업 데이터가 10 MiB 제한을 초과했습니다.");
+  }
+  return backup;
 }

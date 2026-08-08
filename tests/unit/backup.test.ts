@@ -56,9 +56,88 @@ const validBackup = () => ({
   }],
 });
 
+const validBackupV2 = () => ({
+  version: 2,
+  exportedAt: "2026-08-09T00:00:00.000Z",
+  legacy: validBackup(),
+  personalStates: [{
+    sourceRef: {
+      provider: "backup-v2-fixture",
+      externalId: "backup-source-1",
+      originalUrl: "https://example.com/jobs/backup-source-1",
+    },
+    displaySnapshot: { title: "개발자", companyName: "회사" },
+    saved: true,
+    excluded: false,
+    applicationStatus: "interviewing",
+    memo: "개인 메모",
+    nextActionAt: null,
+    updatedAt: "2026-08-09T00:00:00.000Z",
+  }],
+  duplicateDecisions: [{
+    leftSourceRef: {
+      provider: "backup-v2-fixture",
+      externalId: "backup-source-1",
+      originalUrl: "https://example.com/jobs/backup-source-1",
+    },
+    rightSourceRef: {
+      provider: "backup-v2-fixture",
+      externalId: "backup-source-2",
+      originalUrl: "https://example.com/jobs/backup-source-2",
+    },
+    decision: "merged",
+    leftDisplaySnapshot: { title: "개발자", companyName: "회사" },
+    rightDisplaySnapshot: { title: "개발자 2", companyName: "회사" },
+  }],
+  manualLinks: [{
+    legacyJobId: id("1"),
+    sourceRef: {
+      provider: "backup-v2-fixture",
+      externalId: "backup-source-1",
+      originalUrl: "https://example.com/jobs/backup-source-1",
+    },
+  }],
+});
+
 describe("versioned backup validation", () => {
   it("accepts the v1 contract", () => {
     expect(validateBackupText(JSON.stringify(validBackup())).success).toBe(true);
+  });
+
+  it("accepts the closed v2 envelope without reinterpreting v1 legacy statuses", () => {
+    const value = validBackupV2();
+    value.legacy.jobs[0].applicationStatus = "accepted";
+    expect(validateBackupText(JSON.stringify(value))).toMatchObject({ success: true, data: { version: 2 } });
+  });
+
+  it("rejects legacy-only status values and hostile nested v2 keys", () => {
+    const legacyStatus = validBackupV2();
+    legacyStatus.personalStates[0].applicationStatus = "accepted";
+    expect(validateBackupText(JSON.stringify(legacyStatus)).success).toBe(false);
+
+    const hostile = validBackupV2();
+    hostile.duplicateDecisions[0].leftDisplaySnapshot = { title: "개발자", apiKey: "must-not-export" } as never;
+    expect(validateBackupText(JSON.stringify(hostile)).success).toBe(false);
+  });
+
+  it("rejects duplicate portable references and oversized v2 memos", () => {
+    const duplicate = validBackupV2();
+    duplicate.personalStates.push(structuredClone(duplicate.personalStates[0]));
+    expect(validateBackupText(JSON.stringify(duplicate)).success).toBe(false);
+
+    const oversized = validBackupV2();
+    oversized.personalStates[0].memo = "x".repeat(10_001);
+    expect(validateBackupText(JSON.stringify(oversized)).success).toBe(false);
+  });
+
+  it("rejects target-local IDs and unsafe portable URLs from v2 overlays", () => {
+    const localId = validBackupV2();
+    (localId.duplicateDecisions[0] as Record<string, unknown>).candidateId = id("999");
+    expect(validateBackupText(JSON.stringify(localId)).success).toBe(false);
+
+    const unsafeUrl = validBackupV2();
+    unsafeUrl.manualLinks[0].sourceRef.originalUrl = "https://user:password@example.com/private";
+    expect(validateBackupText(JSON.stringify(unsafeUrl)).success).toBe(false);
   });
 
   it("rejects files larger than 10 MiB before parsing", () => {

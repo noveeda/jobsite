@@ -28,6 +28,10 @@ export async function POST(request: Request) {
   const validation = validateBackupText(text);
   if (!validation.success) return NextResponse.json({ code: validation.code, message: "유효하지 않은 백업입니다.", errors: validation.errors, requestId: id }, { status: validation.code === "BACKUP_TOO_LARGE" ? 413 : 422 });
 
+  if (!("schemaVersion" in validation.data)) {
+    return NextResponse.json({ code: "BACKUP_V2_RESTORE_UNAVAILABLE", message: "버전 2 백업 복원은 아직 준비 중입니다.", requestId: id }, { status: 409 });
+  }
+
   if (isE2EBypass()) {
     setE2EBackup(validation.data);
     return NextResponse.json({ jobs: validation.data.jobs.length, sources: validation.data.sources.length, duplicatePairs: validation.data.duplicatePairs.length, revisions: validation.data.revisions.length }, { headers: { "x-request-id": id } });
