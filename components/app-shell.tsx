@@ -20,6 +20,7 @@ export function AppShell({ children, email }: { children: React.ReactNode; email
           <Link href="/jobs" className="brand">채용공고 허브</Link>
           <nav className="row" aria-label="주요 메뉴">
             <Link href="/jobs">공고</Link>
+            <Link href="/jobs/new">직접 공고 등록</Link>
             <Link href="/settings/data">설정</Link>
             <span className="muted">{email}</span>
             <form action={logout}><button className="link-button">로그아웃</button></form>

@@ -26,8 +26,24 @@ const sensitiveKeys = new Set([
   "token",
 ]);
 
+const rawPayloadKeys = new Set([
+  "payload",
+  "providerpayload",
+  "rawpayload",
+  "rawrequest",
+  "rawresponse",
+  "requestbody",
+  "responsebody",
+]);
+
+const sensitiveAssignment = /\b(?:access[-_]?key|access[-_]?token|api[-_]?key|authorization|client[-_]?secret|credentials?|oauth[-_]?token|password|private[-_]?key|refresh[-_]?token|secret|token)\b["']?\s*[:=]\s*\S/i;
+
 function isSensitiveKey(key: string) {
   return sensitiveKeys.has(key.replace(/[^a-z0-9]/gi, "").toLowerCase());
+}
+
+function isRawPayloadKey(key: string) {
+  return rawPayloadKeys.has(key.replace(/[^a-z0-9]/gi, "").toLowerCase());
 }
 
 function unsafeUrlReason(value: string): string | null {
@@ -61,7 +77,10 @@ const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() => z.union([
 ]));
 
 function unsafeStoredValueReason(value: JsonValue): string | null {
-  if (typeof value === "string") return unsafeUrlReason(value);
+  if (typeof value === "string") {
+    if (/\bBearer\s+\S+/i.test(value) || sensitiveAssignment.test(value)) return "Sensitive scalar value is forbidden";
+    return unsafeUrlReason(value);
+  }
   if (Array.isArray(value)) {
     for (const child of value) {
       const reason = unsafeStoredValueReason(child);
@@ -72,6 +91,7 @@ function unsafeStoredValueReason(value: JsonValue): string | null {
   if (value && typeof value === "object") {
     for (const [key, child] of Object.entries(value)) {
       if (isSensitiveKey(key)) return `Sensitive source field is forbidden: ${key}`;
+      if (isRawPayloadKey(key)) return `Raw payload source field is forbidden: ${key}`;
       const reason = unsafeStoredValueReason(child);
       if (reason) return reason;
     }
@@ -130,6 +150,11 @@ export const providerConfigurationSchema: z.ZodType<ProviderConfiguration> = z.o
       }
     }
   }
+  for (const field of configuration.compliance.retentionPolicy.allowedSourceFields) {
+    if (isSensitiveKey(field) || isRawPayloadKey(field)) {
+      context.addIssue({ code: "custom", path: ["compliance", "retentionPolicy", "allowedSourceFields"], message: "Sensitive and raw payload fields cannot be retained" });
+    }
+  }
 });
 
 const collectionScopeSchema = z.object({
@@ -139,6 +164,7 @@ const collectionScopeSchema = z.object({
 
 export const collectionRequestSchema: z.ZodType<FetchPageInput> = z.object({
   cursor: z.string().max(2048).nullable(),
+  runKind: z.enum(["incremental", "reconciliation"]),
   changedSince: utcTimestampSchema.nullable(),
   scope: collectionScopeSchema,
   runId: z.uuid(),
@@ -150,7 +176,7 @@ export const providerPageSchema: z.ZodType<ProviderPage<unknown>> = z.object({
   nextCursor: z.string().max(2048).nullable(),
   total: z.number().int().nonnegative().nullable(),
   snapshotComplete: z.boolean(),
-  quotaCost: z.number().int().positive(),
+  quotaCost: z.literal(1),
   fetchedAt: utcTimestampSchema,
 }).strict();
 
@@ -208,6 +234,9 @@ export function createNormalizedPostingSchema(configuration: ProviderConfigurati
     for (const [key, value] of Object.entries(posting.sourceValues)) {
       if (isSensitiveKey(key)) {
         context.addIssue({ code: "custom", path: ["sourceValues", key], message: "Sensitive source field is forbidden" });
+      }
+      if (isRawPayloadKey(key)) {
+        context.addIssue({ code: "custom", path: ["sourceValues", key], message: "Raw payload source field is forbidden" });
       }
       if (!allowedSourceFields.has(key)) {
         context.addIssue({ code: "custom", path: ["sourceValues", key], message: "Source field is not allowed by retention policy" });

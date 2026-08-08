@@ -1,5 +1,38 @@
 import { expect, test } from "@playwright/test";
 
+function p95(values: readonly number[]) {
+  const sorted = [...values].sort((left, right) => left - right);
+  return sorted[Math.ceil(sorted.length * 0.95) - 1]!;
+}
+
+test("keeps repeated representative 1,000-row catalog queries below two-second p95", async ({ page, baseURL }) => {
+  const fixture = await page.context().request.post("/api/e2e/automatic-discovery", { data: { scenario: "performance-1000" } });
+  expect(fixture.status()).toBe(204);
+
+  const localOrigin = new URL(baseURL!).origin;
+  let externalRequests = 0;
+  await page.route("**/*", (route) => {
+    if (new URL(route.request().url()).origin !== localOrigin) {
+      externalRequests += 1;
+      return route.abort("blockedbyclient");
+    }
+    return route.continue();
+  });
+
+  const measurements: number[] = [];
+  for (let iteration = 0; iteration < 7; iteration += 1) {
+    const started = performance.now();
+    await page.goto("/jobs?q=개발자&region=서울&role=백엔드&employment=permanent&sort=posted&take=30");
+    await expect(page.getByText("1000개의 공고")).toBeVisible();
+    await expect(page.getByRole("article")).toHaveCount(30);
+    if (iteration > 0) measurements.push(performance.now() - started);
+  }
+
+  expect(measurements).toHaveLength(6);
+  expect(p95(measurements)).toBeLessThan(2_000);
+  expect(externalRequests).toBe(0);
+});
+
 test("meets search, stored detail, refresh, and sync timing targets", async ({ browser, page, request }) => {
   await page.goto("/jobs");
   let started = performance.now();

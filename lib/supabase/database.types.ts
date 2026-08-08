@@ -774,6 +774,14 @@ export type Database = {
         Args: { target_provider_code: string; target_reason: string }
         Returns: boolean
       }
+      get_catalog_feed: {
+        Args: { target_filters?: Json; target_take?: number }
+        Returns: Json
+      }
+      get_catalog_job_detail: {
+        Args: { target_id: string }
+        Returns: Json
+      }
       ingest_source_postings: {
         Args: {
           target_finalize?: boolean

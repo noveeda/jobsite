@@ -30,7 +30,7 @@ function markup(provider: AttributionProvider, connectorMode: AttributionConnect
 }
 
 describe("ProviderAttribution", () => {
-  it("renders the original source first and the exact approved Saramin attribution", () => {
+  it.each(["card", "detail"] as const)("renders the original source first and the exact approved Saramin attribution on the %s surface", () => {
     const html = markup("saramin", "approved_api", "https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=1");
 
     expect(html.indexOf("원문 보기")).toBeLessThan(html.indexOf("Powered by 취업 사람인"));

@@ -34,6 +34,26 @@ describe("server environment", () => {
     expect(() => validateServerEnvironment({ ...production(), JOBKOREA_CONNECTOR_ENABLED: "true" })).toThrow(/JOBKOREA_API_URL/);
   });
 
+  it.each([
+    ["SARAMIN_CONNECTOR_ENABLED", "yes"],
+    ["SARAMIN_CONNECTOR_ENABLED", " true "],
+    ["JOBKOREA_CONNECTOR_ENABLED", "TRUE"],
+  ])("rejects non-canonical connector flag %s=%s", (name, value) => {
+    expect(() => validateServerEnvironment({ ...production(), [name]: value })).toThrow(new RegExp(name));
+  });
+
+  it("trims the Saramin key for non-empty validation", () => {
+    const enabledConnector = {
+      ...production(),
+      AUTOMATIC_DISCOVERY_ENABLED: "true",
+      COLLECTOR_ENABLED: "true",
+      CRON_SECRET: "collector-secret-at-least-16",
+      SARAMIN_CONNECTOR_ENABLED: "true",
+    };
+    expect(() => validateServerEnvironment({ ...enabledConnector, SARAMIN_API_KEY: "   " })).toThrow(/SARAMIN_API_KEY/);
+    expect(validateServerEnvironment({ ...enabledConnector, SARAMIN_API_KEY: " fixture-key " })).toMatchObject({ saraminConnectorEnabled: true });
+  });
+
   it("validates automatic discovery flags without returning collector secrets", () => {
     const operatorId = "00000000-0000-4000-8000-000000000001";
     const result = validateServerEnvironment({

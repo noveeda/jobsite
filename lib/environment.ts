@@ -37,12 +37,12 @@ export function validateServerEnvironment(environment: EnvironmentSource = proce
       PUBLIC_POLICY_EFFECTIVE_DATE: isoDate,
     });
   }
-  for (const name of ["AUTOMATIC_DISCOVERY_ENABLED", "COLLECTOR_ENABLED"] as const) {
+  for (const name of ["AUTOMATIC_DISCOVERY_ENABLED", "COLLECTOR_ENABLED", "SARAMIN_CONNECTOR_ENABLED", "JOBKOREA_CONNECTOR_ENABLED"] as const) {
     if (configured(environment[name])) required[name] = featureFlag;
   }
   if (enabled(environment.COLLECTOR_ENABLED) || configured(environment.CRON_SECRET)) required.CRON_SECRET = cronSecret;
   if (configured(environment.OPERATOR_USER_IDS)) required.OPERATOR_USER_IDS = operatorIds;
-  if (enabled(environment.SARAMIN_CONNECTOR_ENABLED)) required.SARAMIN_API_KEY = z.string().min(1);
+  if (enabled(environment.SARAMIN_CONNECTOR_ENABLED)) required.SARAMIN_API_KEY = z.string().trim().min(1);
   if (enabled(environment.JOBKOREA_CONNECTOR_ENABLED)) required.JOBKOREA_API_URL = httpsUrl;
 
   const missing: string[] = [];
@@ -55,12 +55,19 @@ export function validateServerEnvironment(environment: EnvironmentSource = proce
   if (environment.NODE_ENV === "production" && environment.E2E_RATE_LIMIT_TEST_SUPPORT === "true") {
     missing.push("E2E_RATE_LIMIT_TEST_SUPPORT must be disabled");
   }
+  if (enabled(environment.COLLECTOR_ENABLED) && !enabled(environment.AUTOMATIC_DISCOVERY_ENABLED)) {
+    missing.push("AUTOMATIC_DISCOVERY_ENABLED must be true when collector is enabled");
+  }
+  if (enabled(environment.SARAMIN_CONNECTOR_ENABLED) && (!enabled(environment.AUTOMATIC_DISCOVERY_ENABLED) || !enabled(environment.COLLECTOR_ENABLED))) {
+    missing.push("discovery and collector must be enabled for Saramin");
+  }
   if (missing.length) throw new Error(`Invalid server environment: ${missing.sort().join(", ")}`);
 
   return {
     appBaseUrl: environment.APP_BASE_URL,
     automaticDiscoveryEnabled: enabled(environment.AUTOMATIC_DISCOVERY_ENABLED),
     collectorEnabled: enabled(environment.COLLECTOR_ENABLED),
+    saraminConnectorEnabled: enabled(environment.SARAMIN_CONNECTOR_ENABLED),
     operatorUserIds: configured(environment.OPERATOR_USER_IDS)
       ? environment.OPERATOR_USER_IDS!.split(",").map((id) => id.trim())
       : [],

@@ -37,6 +37,13 @@ test("keeps primary workflows usable at mobile width with labelled controls", as
   await expect(page.getByLabel("제외 공고 포함")).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);
+  const undersizedTargets = await page.locator(".topbar a, .topbar button, .touch-target").evaluateAll((targets) =>
+    targets.flatMap((target) => {
+      const { width, height } = target.getBoundingClientRect();
+      return width >= 44 && height >= 44 ? [] : [{ tag: target.tagName, width, height }];
+    }),
+  );
+  expect(undersizedTargets).toEqual([]);
 
   await page.goto("/jobs/00000000-0000-4000-8000-000000000013");
   await expect(page.getByLabel("메모")).toBeVisible();

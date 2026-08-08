@@ -71,3 +71,13 @@ textarea { min-height: 100px; resize: vertical; }
 .policy-links { margin-top: 18px; font-size: .85rem; color: var(--muted); }
 .danger-zone { border-color: #f2b8b5; }
 .button.danger { background: var(--danger); }
+.button, button, input, select, .touch-target, .topbar a { min-height: 44px; }
+.button, button, .touch-target, .topbar a { min-width: 44px; }
+.touch-target, .topbar a { display: inline-flex; align-items: center; }
+.filter-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.filter-chip { border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; background: var(--surface); color: var(--text); text-decoration: none; }
+.warning-card { border-color: #f5c451; background: #fffaf0; }
+.feed-skeleton { min-height: 120px; background: linear-gradient(90deg, #edf0f5 25%, #f8f9fb 50%, #edf0f5 75%); background-size: 200% 100%; animation: feed-loading 1.2s infinite; }
+.more-results { justify-self: center; }
+@keyframes feed-loading { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .feed-skeleton { animation: none; } }

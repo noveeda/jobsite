@@ -40,6 +40,7 @@ export type CollectionScope = {
 
 export type FetchPageInput = {
   cursor: OpaqueCursor | null;
+  runKind: "incremental" | "reconciliation";
   changedSince: UtcTimestamp | null;
   scope: CollectionScope;
   runId: string;

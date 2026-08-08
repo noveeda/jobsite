@@ -37,11 +37,11 @@ description: "자동 통합 채용공고 탐색의 의존성 순서 작업 목�
 - [X] T008 Regenerate shared catalog and RPC types in lib/supabase/database.types.ts after the foundational migrations
 - [X] T009 [P] Define provider capabilities, compliance, opaque cursor, normalized posting, and stable error types in lib/sources/provider-adapter.ts
 - [X] T010 [P] Add Zod validation for provider configuration, collection request, and normalized postings in lib/validation/collection.ts
-- [ ] T011 [P] Add secret/URL-query redaction and operator allowlist denial regression tests in tests/unit/collector-secret-leakage.test.ts and tests/unit/operator-sources.test.ts
-- [ ] T012 Implement database-backed run lease and atomic daily quota clients in lib/collection/quota.ts
-- [ ] T013 Implement source fact/provenance normalization without raw-payload persistence in lib/collection/normalize.ts
-- [ ] T014 [P] Add regression tests proving existing manual jobs, backup v1, account deletion, and source refresh remain unchanged in tests/unit/automatic-discovery-legacy-regression.test.ts
-- [ ] T015 Add fail-closed discovery/collector configuration, requireOperator allowlist checks, operator-only provider status/disable page and action, and health signals in lib/environment.ts, lib/auth.ts, app/(dashboard)/settings/sources/page.tsx, app/(dashboard)/settings/sources/actions.ts, and app/api/health/route.ts
+- [X] T011 [P] Add secret/URL-query redaction and operator allowlist denial regression tests in tests/unit/collector-secret-leakage.test.ts and tests/unit/operator-sources.test.ts
+- [X] T012 Implement database-backed run lease and atomic daily quota clients in lib/collection/quota.ts
+- [X] T013 Implement source fact/provenance normalization without raw-payload persistence in lib/collection/normalize.ts
+- [X] T014 [P] Add regression tests proving existing manual jobs, backup v1, account deletion, and source refresh remain unchanged in tests/unit/automatic-discovery-legacy-regression.test.ts
+- [X] T015 Add fail-closed discovery/collector configuration, requireOperator allowlist checks, operator-only provider status/disable page and action, and health signals in lib/environment.ts, lib/auth.ts, app/(dashboard)/settings/sources/page.tsx, app/(dashboard)/settings/sources/actions.ts, and app/api/health/route.ts
 
 **Checkpoint**: Fresh database reset and foundational pgTAP tests pass; browser roles cannot mutate shared catalog; legacy behavior remains green.
 
@@ -55,21 +55,21 @@ description: "자동 통합 채용공고 탐색의 의존성 순서 작업 목�
 
 ### Tests for User Story 1
 
-- [ ] T016 [P] [US1] Write provider contract tests for page cursors, normalization, quota cost, partial snapshots, and stable errors in tests/unit/provider-adapter.test.ts
-- [ ] T017 [P] [US1] Write collector tests for lease idempotency, bounded retry, hourly no-op before six-hour due time, freshness latency timestamps, provider isolation, threshold degradation, and missing/wrong CRON_SECRET, disabled collector, unsupported method, and zero admin/provider calls on rejection in tests/unit/catalog-collector.test.ts and tests/unit/collector-route.test.ts
+- [X] T016 [P] [US1] Write provider contract tests for page cursors, normalization, quota cost, partial snapshots, and stable errors in tests/unit/provider-adapter.test.ts
+- [X] T017 [P] [US1] Write collector tests for lease idempotency, bounded retry, hourly no-op before six-hour due time, freshness latency timestamps, provider isolation, threshold degradation, and missing/wrong CRON_SECRET, disabled collector, unsupported method, and zero admin/provider calls on rejection in tests/unit/catalog-collector.test.ts and tests/unit/collector-route.test.ts
 - [ ] T018 [P] [US1] Write pgTAP ingestion tests for upsert identity, conflicting source-value/provenance preservation, partial-run preservation, two-complete-run closure, permission-withdrawal/retention purge, forbidden-field removal, and personal-state survival in supabase/tests/automatic_discovery_ingest.test.sql
-- [ ] T019 [P] [US1] Replace manual-first E2E assertions with a no-input feed journey covering unauthenticated /jobs and detail redirects, preparing/ready-empty/partial/failed/degraded fixtures, cached-feed retention, threshold branding removal, and operator warning in tests/e2e/job-discovery.spec.ts
+- [X] T019 [P] [US1] Replace manual-first E2E assertions with a no-input feed journey covering unauthenticated /jobs and detail redirects, preparing/ready-empty/partial/failed/degraded fixtures, cached-feed retention, threshold branding removal, and operator warning in tests/e2e/job-discovery.spec.ts
 - [ ] T020 [P] [US1] Extend attribution tests for Saramin cards and details without depending on US4 merge behavior in tests/e2e/provider-attribution.spec.ts and tests/unit/provider-attribution.test.ts
 
 ### Implementation for User Story 1
 
-- [ ] T021 [P] [US1] Implement both deterministic fixture adapters against lib/sources/provider-adapter.ts in lib/sources/fixtures/adapters.ts
-- [ ] T022 [P] [US1] Extend the Saramin adapter from ID preview to paged catalog discovery with SARAMIN_API_KEY, count 110, safe timeout, and redacted errors in lib/sources/saramin.ts
-- [ ] T023 [US1] Implement six-hour due-provider claim under hourly invocation, fetch-page loop, transactional upsert, freshness timestamps, retry, closure, and idempotent retention-purge orchestration in lib/collection/collect.ts
-- [ ] T024 [US1] Implement CRON_SECRET-protected bounded POST collection in app/api/cron/collect/route.ts
-- [ ] T025 [US1] Add the shared catalog read path without personal_job_states, compute provider/job-count threshold health, and return feed health in app/(dashboard)/jobs/queries.ts
-- [ ] T026 [US1] Render automatic catalog cards, source freshness, original links, preparing/ready-empty/partial/failed/degraded states, cached-feed banners, degraded branding removal, and 44px navigation/job-link controls in components/job-list.tsx, components/provider-attribution.tsx, components/feed-status.tsx, components/app-shell.tsx, app/(dashboard)/jobs/loading.tsx, app/(dashboard)/jobs/error.tsx, and app/globals.css
-- [ ] T027 [US1] Make /jobs the authenticated default automatic feed while keeping /jobs/new as a secondary path in app/(dashboard)/jobs/page.tsx and components/app-shell.tsx
+- [X] T021 [P] [US1] Implement both deterministic fixture adapters against lib/sources/provider-adapter.ts in lib/sources/fixtures/adapters.ts
+- [X] T022 [P] [US1] Extend the Saramin adapter from ID preview to paged catalog discovery with SARAMIN_API_KEY, count 110, safe timeout, and redacted errors in lib/sources/saramin.ts
+- [X] T023 [US1] Implement six-hour due-provider claim under hourly invocation, fetch-page loop, transactional upsert, freshness timestamps, retry, closure, and idempotent retention-purge orchestration in lib/collection/collect.ts
+- [X] T024 [US1] Implement CRON_SECRET-protected bounded POST collection in app/api/cron/collect/route.ts
+- [X] T025 [US1] Add the shared catalog read path without personal_job_states, compute provider/job-count threshold health, and return feed health in app/(dashboard)/jobs/queries.ts
+- [X] T026 [US1] Render automatic catalog cards, source freshness, original links, preparing/ready-empty/partial/failed/degraded states, cached-feed banners, degraded branding removal, and 44px navigation/job-link controls in components/job-list.tsx, components/provider-attribution.tsx, components/feed-status.tsx, components/app-shell.tsx, app/(dashboard)/jobs/loading.tsx, app/(dashboard)/jobs/error.tsx, and app/globals.css
+- [X] T027 [US1] Make /jobs the authenticated default automatic feed while keeping /jobs/new as a secondary path in app/(dashboard)/jobs/page.tsx and components/app-shell.tsx
 
 **Checkpoint**: US1 works with fixture providers and without any real external key; direct job creation is not required.
 
@@ -83,18 +83,18 @@ description: "자동 통합 채용공고 탐색의 의존성 순서 작업 목�
 
 ### Tests for User Story 2
 
-- [ ] T028 [P] [US2] Write parser tests for defaults, allowed filters, take multiples/cap, and filter-reset behavior in tests/unit/feed-query.test.ts
-- [ ] T029 [P] [US2] Write pgTAP tests for database filtering, missing-value exclusion, deterministic ordering, and user-independent sort in supabase/tests/automatic_discovery_feed.test.sql
-- [ ] T030 [P] [US2] Add E2E coverage for combined filters, URL persistence, 30→60 results, zero state, and detail-return focus in tests/e2e/job-discovery.spec.ts
-- [ ] T031 [P] [US2] Add repeated representative 1,000-row search/filter runs with warm-up exclusion and calculated p95 under two seconds in tests/e2e/performance.spec.ts
+- [X] T028 [P] [US2] Write parser tests for defaults, allowed filters, take multiples/cap, and filter-reset behavior in tests/unit/feed-query.test.ts
+- [X] T029 [P] [US2] Write pgTAP tests for database filtering, missing-value exclusion, deterministic ordering, and user-independent sort in supabase/tests/automatic_discovery_feed.test.sql
+- [X] T030 [P] [US2] Add E2E coverage for combined filters, URL persistence, 30→60 results, zero state, and detail-return focus in tests/e2e/job-discovery.spec.ts
+- [X] T031 [P] [US2] Add repeated representative 1,000-row search/filter runs with warm-up exclusion and calculated p95 under two seconds in tests/e2e/performance.spec.ts
 
 ### Implementation for User Story 2
 
-- [ ] T032 [P] [US2] Implement validated q, region, role, career, employment, deadline, source, sort, includeExcluded, saved, and take parsing in lib/validation/feed.ts
-- [ ] T033 [US2] Add indexed catalog feed query/RPC with total, missing counts, and stable ordering in supabase/migrations/20260808000300_automatic_discovery_feed.sql
-- [ ] T034 [US2] Replace in-memory filtering with database range/filter queries in app/(dashboard)/jobs/queries.ts
-- [ ] T035 [US2] Implement shared desktop/mobile GET filter form, applied chips, count, reset, and 44px controls in components/filters.tsx and app/(dashboard)/jobs/page.module.css
-- [ ] T036 [US2] Implement explicit more-results links, hash-based return focus, and 44px more/back controls in components/job-list.tsx, components/job-focus-restorer.tsx, app/(dashboard)/jobs/[id]/page.tsx, and app/globals.css
+- [X] T032 [P] [US2] Implement validated q, region, role, career, employment, deadline, source, sort, includeExcluded, saved, and take parsing in lib/validation/feed.ts
+- [X] T033 [US2] Add indexed catalog feed query/RPC with total, missing counts, and stable ordering in supabase/migrations/20260808000300_automatic_discovery_feed.sql
+- [X] T034 [US2] Replace in-memory filtering with database range/filter queries in app/(dashboard)/jobs/queries.ts
+- [X] T035 [US2] Implement shared desktop/mobile GET filter form, applied chips, count, reset, and 44px controls in components/filters.tsx and app/(dashboard)/jobs/page.module.css
+- [X] T036 [US2] Implement explicit more-results links, hash-based return focus, and 44px more/back controls in components/job-list.tsx, components/job-focus-restorer.tsx, app/(dashboard)/jobs/[id]/page.tsx, and app/globals.css
 
 **Checkpoint**: US2 can be verified against fixture data without enabling a real provider.
 

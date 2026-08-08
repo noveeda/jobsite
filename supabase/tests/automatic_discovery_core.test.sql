@@ -247,6 +247,10 @@ insert into public.source_postings (
   'fixture-survivor-1'
 );
 
+update public.source_providers
+set enabled = false
+where code = 'fixture-core';
+
 set local role service_role;
 select is(
   (select public.purge_source_provider_data('fixture-core', 'TERMS_WITHDRAWN')),

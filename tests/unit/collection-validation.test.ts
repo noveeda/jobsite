@@ -97,6 +97,7 @@ describe("collection request and page boundaries", () => {
     const cursor = "opaque:after/red?provider-owned=true";
     const result = collectionRequestSchema.parse({
       cursor,
+      runKind: "incremental",
       changedSince: observedAt,
       scope: { roleCodes: ["backend"], locationCodes: ["seoul"] },
       runId: "fe13c4ca-8b03-4b15-87e8-e646729e42aa",
@@ -108,6 +109,7 @@ describe("collection request and page boundaries", () => {
   it("rejects non-UTC timestamps and oversized cursors", () => {
     const request = {
       cursor: null,
+      runKind: "incremental" as const,
       changedSince: observedAt,
       scope: { roleCodes: [], locationCodes: [] },
       runId: "fe13c4ca-8b03-4b15-87e8-e646729e42aa",
@@ -121,6 +123,7 @@ describe("collection request and page boundaries", () => {
     const page = { items: [], nextCursor: null, total: 0, snapshotComplete: true, quotaCost: 1, fetchedAt: observedAt };
     expect(providerPageSchema.safeParse(page).success).toBe(true);
     expect(providerPageSchema.safeParse({ ...page, quotaCost: 0 }).success).toBe(false);
+    expect(providerPageSchema.safeParse({ ...page, quotaCost: 2 }).success).toBe(false);
     expect(providerPageSchema.safeParse({ ...page, fetchedAt: "2026-08-08T09:00:00+09:00" }).success).toBe(false);
   });
 });
@@ -150,9 +153,38 @@ describe("configuration-aware normalized postings", () => {
         },
       },
     };
-    expect(createNormalizedPostingSchema(unsafeConfiguration).safeParse({
+    expect(() => createNormalizedPostingSchema(unsafeConfiguration)).toThrow();
+  });
+
+  it.each(["rawPayload", "raw_payload", "raw-payload", "providerPayload", "responseBody", "payload"])("rejects nested raw provider field variant %s", (key) => {
+    expect(schema.safeParse({
       ...validPosting(),
-      sourceValues: { ...validPosting().sourceValues, accessKey: "must-not-persist" },
+      sourceValues: { ...validPosting().sourceValues, metadata: { envelope: { [key]: { jobs: ["raw"] } } } },
+    }).success).toBe(false);
+  });
+
+  it.each([
+    "authorization: Bearer scalar-canary",
+    "clientSecret=scalar-canary",
+    "api_key:scalar-canary",
+    '{"refreshToken":"scalar-canary"}',
+  ])("rejects a sensitive scalar hidden in an allowed field", (value) => {
+    expect(schema.safeParse({
+      ...validPosting(),
+      sourceValues: { ...validPosting().sourceValues, metadata: { note: value } },
+    }).success).toBe(false);
+  });
+
+  it("rejects raw payload fields in the retention allowlist itself", () => {
+    expect(providerConfigurationSchema.safeParse({
+      ...approvedProvider,
+      compliance: {
+        ...approvedProvider.compliance,
+        retentionPolicy: {
+          ...approvedProvider.compliance.retentionPolicy,
+          allowedSourceFields: [...approvedProvider.compliance.retentionPolicy.allowedSourceFields, "rawPayload"],
+        },
+      },
     }).success).toBe(false);
   });
 

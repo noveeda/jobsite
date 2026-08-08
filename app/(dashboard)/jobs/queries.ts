@@ -1,6 +1,60 @@
-import { isE2EBypass } from "@/lib/environment";
 import { createClient } from "@/lib/supabase/server";
+import { getDiscoveryScenario } from "@/lib/e2e/automatic-discovery";
+import { makeDiscoveryFeedFixture } from "@/lib/e2e/discovery-feed";
+import { isE2EBypass } from "@/lib/environment";
+import {
+  catalogFeedResponseSchema,
+  parseFeedQuery,
+  type CatalogFeedResponse,
+  type FeedQuery,
+  type FeedQueryInput,
+} from "@/lib/validation/feed";
 import type { AttributionConnectorMode, AttributionProvider } from "@/components/provider-attribution";
+
+export type FeedHealth = "ready" | "preparing" | "partial" | "failed" | "degraded";
+export type CatalogFeed = CatalogFeedResponse & { query: FeedQuery; health: FeedHealth; cached: boolean };
+
+function hasActiveCatalogFilter(query: FeedQuery) {
+  return Boolean(query.q || query.region || query.role || query.career || query.employment || query.deadline || query.source || query.saved || query.includeExcluded);
+}
+
+export function catalogHealth(feed: CatalogFeedResponse, query: FeedQuery): FeedHealth {
+  if (feed.enabledProviderCount === 0 && feed.total === 0) return "preparing";
+  const enabledProviders = feed.providerHealth.filter(({ enabled }) => enabled);
+  const failures = enabledProviders.filter(({ errorCode }) => errorCode !== null).length;
+  if (feed.enabledProviderCount > 0 && failures === feed.enabledProviderCount) return "failed";
+  if (failures > 0) return "partial";
+  if (feed.enabledProviderCount < 2 || (!hasActiveCatalogFilter(query) && feed.total < 100)) return "degraded";
+  return "ready";
+}
+
+export async function usesAutomaticFeed() {
+  return process.env.AUTOMATIC_DISCOVERY_ENABLED === "true" || await getDiscoveryScenario() !== null;
+}
+
+export async function getCatalogFeed(input: FeedQueryInput): Promise<CatalogFeed> {
+  const query = parseFeedQuery(input);
+  const scenario = await getDiscoveryScenario();
+  if (scenario === "exception") throw new Error("AUTOMATIC_DISCOVERY_FEED_UNAVAILABLE");
+
+  let raw: unknown;
+  if (scenario) {
+    raw = makeDiscoveryFeedFixture(scenario, query);
+  } else {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("get_catalog_feed", {
+      target_filters: query,
+      target_take: query.take,
+    });
+    if (error) throw new Error("AUTOMATIC_DISCOVERY_FEED_UNAVAILABLE");
+    raw = data;
+  }
+
+  const feed = catalogFeedResponseSchema.safeParse(raw);
+  if (!feed.success) throw new Error("AUTOMATIC_DISCOVERY_FEED_INVALID");
+  const health = catalogHealth(feed.data, query);
+  return { ...feed.data, query, health, cached: (health === "partial" || health === "failed") && feed.data.items.length > 0 };
+}
 
 export type JobListItem = {
   id: string;

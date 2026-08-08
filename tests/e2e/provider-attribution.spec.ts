@@ -21,6 +21,7 @@ test("keeps legal and source policies public", async ({ page }) => {
 });
 
 test("distinguishes approved Saramin data from manual sources in the job list", async ({ page }) => {
+  test.fixme(true, "Pending Saramin API approval evidence and an approved production fixture.");
   await page.goto("/jobs");
 
   const saraminCard = page.getByRole("article").filter({
@@ -31,6 +32,13 @@ test("distinguishes approved Saramin data from manual sources in the job list", 
   await expect(saraminSource.getByRole("link", { name: "원문 보기" })).toHaveAttribute("href", /saramin\.co\.kr.*rec_idx=0/);
   await expect(saraminSource).toContainText("저장된 정보는 원문을 대체하지 않습니다.");
   await expect(saraminCard).toContainText(/최초 확인 .*마지막 자동 갱신/);
+
+  await page.goto(await saraminCard.getByRole("link", { name: "테스트 개발자 0", exact: true }).getAttribute("href") ?? "/jobs/missing");
+  const saraminDetailSource = page.getByLabel("출처 안내");
+  await expect(saraminDetailSource.getByRole("link", { name: "Powered by 취업 사람인" })).toHaveAttribute("href", /^https:\/\/www\.saramin\.co\.kr\/?$/);
+  await expect(saraminDetailSource.getByRole("link", { name: "원문 보기" })).toHaveAttribute("href", /saramin\.co\.kr.*rec_idx=0/);
+  await expect(saraminDetailSource).toContainText("저장된 정보는 원문을 대체하지 않습니다.");
+  await page.goBack();
 
   const manualCard = page.getByRole("article").filter({
     has: page.getByRole("heading", { name: "테스트 개발자 1", exact: true }),

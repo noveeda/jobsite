@@ -43,7 +43,7 @@ function makeCatalog(providerCode: string, prefix: string, count = 60): readonly
       originalUrl: `https://${providerCode}.example.invalid/jobs/${index + 1}`,
       sourceStatus: "active" as const,
       title: duplicateExample ? "플랫폼 개발자" : `${roles[index % roles.length]} 개발자 ${index + 1}`,
-      companyName: duplicateExample ? "중복예시 주식회사" : `${providerCode} 예시기업 ${index + 1}`,
+      companyName: duplicateExample ? "fixture-page 중복예시 주식회사" : `${providerCode} 예시기업 ${index + 1}`,
       locations: [locations[index % locations.length]],
       roleName: roles[index % roles.length],
       career: careers[index % careers.length],

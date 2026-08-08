@@ -53,3 +53,34 @@ export function JobList({ jobs }: { jobs: JobListItem[] }) {
     </div>
   );
 }
+export function CatalogJobList({ jobs, returnTo }: { jobs: import("@/lib/validation/feed").CatalogFeedItem[]; returnTo: string }) {
+  return (
+    <div className="job-list">
+      {jobs.map((job) => {
+        const deadline = deadlineState(job.deadlineKind, job.deadlineAt);
+        return (
+          <article className="card job-card" id={`job-${job.id}`} key={job.id} tabIndex={-1}>
+            <div className="stack">
+              <div>
+                <p className="muted">{job.companyName}</p>
+                <h2><Link className="touch-target" href={`/jobs/${job.id}?returnTo=${encodeURIComponent(`${returnTo}#job-${job.id}`)}`}>{job.title}</Link></h2>
+                <p>{job.roleName ?? "정보 없음"} · {job.locations.join(", ") || "정보 없음"} · {job.employmentTypes.join(", ") || "정보 없음"}</p>
+              </div>
+              {job.sources.map((source) => (
+                <div className="source-attribution" key={`${source.provider}:${source.originalUrl}`}>
+                  <div className="row">
+                    <strong>{source.providerName}</strong>
+                    <a className="touch-target" href={source.originalUrl} target="_blank" rel="noopener noreferrer">원문 보기</a>
+                    <a className="touch-target" href={source.attribution.href} target="_blank" rel="noopener noreferrer">{source.attribution.text}</a>
+                  </div>
+                  <p className="muted">마지막 확인 {formatObservedAt(source.lastObservedAt)}</p>
+                </div>
+              ))}
+            </div>
+            <div className="job-meta"><span>{deadline.label}</span>{job.lifecycleStatus === "stale" && <span>최신성 확인 중</span>}</div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
