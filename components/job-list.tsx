@@ -77,6 +77,19 @@ export function CatalogJobList({ jobs, returnTo }: { jobs: import("@/lib/validat
                   <p className="muted">마지막 확인 {formatObservedAt(source.lastObservedAt)}</p>
                 </div>
               ))}
+              {job.duplicateGroup && (
+                <section className="stack" aria-label="중복 공고 묶음">
+                  <p><span className="badge">중복 묶음 {job.duplicateGroup.memberIds.length}개</span> · 현재 조건 일치 {job.duplicateGroup.matchingMemberIds.length}개</p>
+                  <p className="muted">판단 근거: {job.duplicateGroup.reasons.join(", ")}</p>
+                  <div className="row">
+                    {job.duplicateGroup.memberIds.map((memberId) => (
+                      <Link className="touch-target" href={`/jobs/${memberId}?returnTo=${encodeURIComponent(`${returnTo}#job-${job.id}`)}`} key={memberId}>
+                        공고 {memberId === job.id ? "대표" : memberId}
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
             <div className="job-meta">
               <span>{deadline.label}</span>

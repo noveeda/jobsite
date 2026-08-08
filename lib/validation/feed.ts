@@ -79,8 +79,24 @@ export const catalogPersonalStateSchema = z.object({
   nextActionAt: z.string().datetime({ offset: true }).nullable(),
 }).strict();
 
+const catalogDuplicateGroupSchema = z.object({
+  representativeId: z.string().uuid(),
+  memberIds: z.array(z.string().uuid()).min(2).max(25),
+  matchingMemberIds: z.array(z.string().uuid()).min(1).max(25),
+  reasons: z.array(z.string().regex(/^[a-z][a-z0-9_]{1,39}$/)).min(1).max(20),
+}).strict().superRefine((group, context) => {
+  const members = new Set(group.memberIds);
+  if (!members.has(group.representativeId)) {
+    context.addIssue({ code: "custom", path: ["representativeId"], message: "Representative must be a group member" });
+  }
+  if (members.size !== group.memberIds.length || group.matchingMemberIds.some((id) => !members.has(id))) {
+    context.addIssue({ code: "custom", path: ["matchingMemberIds"], message: "Group members must be unique and matching members must belong to the group" });
+  }
+});
+
 export const catalogFeedItemSchema = catalogDisplayItemSchema.extend({
   personalState: catalogPersonalStateSchema,
+  duplicateGroup: catalogDuplicateGroupSchema.optional(),
 });
 
 export const catalogJobDetailSchema = catalogDisplayItemSchema.extend({
@@ -121,6 +137,7 @@ export const catalogDuplicateDetailSchema = z.object({
     score: z.number().min(0).max(1),
     reasons: z.array(z.string().regex(/^[a-z][a-z0-9_]{1,39}$/)).min(1).max(20),
     evidenceRevision: z.number().int().positive(),
+    active: z.boolean(),
     sources: z.array(catalogDuplicateDetailSourceSchema).length(2),
     conflicts: z.array(catalogDuplicateConflictSchema).max(2),
     currentUser: catalogDuplicateCurrentUserSchema,

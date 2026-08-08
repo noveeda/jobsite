@@ -89,6 +89,7 @@ describe("catalog duplicate candidates", () => {
         score: 0.9,
         reasons: ["company_match", "title_match"],
         evidenceRevision: 2,
+        active: true,
         sources: [
           { provider: "fixture-one", providerName: "Fixture one", originalUrl: "https://one.example.com/jobs/1", observedAt: "2026-08-09T00:00:00Z" },
           { provider: "fixture-two", providerName: "Fixture two", originalUrl: "https://two.example.com/jobs/2", observedAt: "2026-08-09T00:00:00Z" },
