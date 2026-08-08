@@ -108,3 +108,12 @@
 - The stored cron command is exactly `select public.invoke_collection_schedule();`; the helper reads Vault internally, returns `void`, and never logs or returns its secret.
 - `supabase/tests/schedule_collection.test.sql` uses only transaction-local fake cron/Vault fixture values. It creates no hosted schedule, provider request, or real secret.
 - Operator evidence remains required before production enablement: approved source gates, protected staging collector smoke, health/OAuth validation, quota/lease review, and a documented disable/rollback owner.
+
+## U5 — Source approval activation gate
+
+- Migration `20260809001000_source_activation_gate.sql` adds a secret-free restricted activation record to `source_providers`: explicit activation opt-in, approval status/expiry/reference, retention and attribution decisions, staging smoke reference, and operator enablement timestamp/actor.
+- The runtime resolver reads the current restricted record using the server-only service-role client immediately before each Saramin preview, approved-source refresh, and collector fetch. It returns a typed disabled result for missing, pending, blocked, withdrawn, stale, incomplete, concurrently disabled, or credential-missing states; it does not return the record or credential to the browser.
+- Existing fixture providers remain approval-independent only because `activation_required` defaults to false; the resolver rejects that state for Saramin and fixture coverage is not release evidence.
+- Focused unit proof: `npx vitest run tests/unit/source-activation.test.ts tests/unit/source-refresh.test.ts tests/unit/saramin-catalog.test.ts` — PASS (18 tests). No live provider request or remote database change was made.
+- `supabase/tests/source_activation_gate.test.sql` proves record constraints, no credential-shaped database columns, and browser-role denial. Full database suite remains required before merge.
+- External release gates remain OPEN: approved Saramin, a separately approved second provider, 100 active rows, attribution/retention confirmation, protected staging smoke, redacted logs/freshness metrics, backup/rollback drill, and representative user trial.

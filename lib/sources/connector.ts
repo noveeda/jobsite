@@ -1,5 +1,6 @@
 import { previewJobKorea } from "./jobkorea";
 import { previewSaramin } from "./saramin";
+import { resolveSaraminActivation } from "./activation";
 
 export type Provider = "manual" | "saramin" | "jobkorea" | "other";
 export type SourceReference = {
@@ -83,19 +84,23 @@ type RefreshDependencies = {
   persist?: (result: RefreshPersistence) => Promise<void>;
 };
 
+type PreviewDependencies = {
+  resolveSaraminActivation?: typeof resolveSaraminActivation;
+  providerCall?: (reference: SourceReference) => Promise<SourceResult>;
+};
+
 const REFRESH_TTL_MS = 30 * 60 * 1000;
 const refreshableFields = ["title", "companyName", "roleName", "locations", "deadlineAt", "deadlineKind"] as const;
-
-function enabledByEnvironment(provider: Provider) {
-  if (provider === "saramin") return process.env.SARAMIN_CONNECTOR_ENABLED === "true";
-  if (provider === "jobkorea") return process.env.JOBKOREA_CONNECTOR_ENABLED === "true";
-  return false;
-}
 
 async function callProvider(reference: SourceReference) {
   if (reference.provider === "saramin") return previewSaramin(reference);
   if (reference.provider === "jobkorea") return previewJobKorea(reference);
   throw new SourceError("MANUAL_ONLY");
+}
+
+async function activeByApproval(provider: Provider) {
+  if (provider !== "saramin") return false;
+  return (await resolveSaraminActivation()).enabled;
 }
 
 function sameValue(a: unknown, b: unknown) {
@@ -105,7 +110,7 @@ function sameValue(a: unknown, b: unknown) {
 export async function refreshSource(input: RefreshSourceInput, dependencies: RefreshDependencies = {}): Promise<RefreshResponse> {
   const now = dependencies.now?.() ?? new Date();
   const checkedAt = now.toISOString();
-  const enabled = dependencies.providerEnabled ?? enabledByEnvironment;
+  const enabled = dependencies.providerEnabled ?? activeByApproval;
   const providerCall = dependencies.providerCall ?? callProvider;
   const persist = dependencies.persist ?? (async () => {});
 
@@ -123,7 +128,7 @@ export async function refreshSource(input: RefreshSourceInput, dependencies: Ref
   const unsupported = input.source.connectorMode !== "approved_api"
     || input.source.provider === "other"
     || !input.source.externalId
-    || !enabled(input.source.provider);
+    || !(await enabled(input.source.provider));
 
   if (unsupported) {
     const errorCode: SourceError["code"] = input.source.connectorMode === "manual" || input.source.provider === "other"
@@ -211,11 +216,21 @@ export function canonicalizeUrl(input: string) {
   return url.toString();
 }
 
-export async function previewSource(input: string): Promise<{ reference: SourceReference; result: SourceResult | null; warnings: string[] }> {
-  const reference = recognizeSource(input);
+export async function previewSource(
+  input: string,
+  dependencies: PreviewDependencies = {},
+): Promise<{ reference: SourceReference; result: SourceResult | null; warnings: string[] }> {
+  let reference = recognizeSource(input);
+  if (reference.provider === "saramin" && reference.externalId) {
+    const activation = await (dependencies.resolveSaraminActivation ?? resolveSaraminActivation)();
+    if (!activation.enabled) return { reference, result: null, warnings: [activation.reason] };
+    reference = { ...reference, connectorMode: "approved_api" };
+  }
   if (reference.connectorMode === "manual" || !reference.externalId) return { reference, result: null, warnings: ["SOURCE_MANUAL_ONLY"] };
   try {
-    const result = reference.provider === "saramin" ? await previewSaramin(reference) : await previewJobKorea(reference);
+    const result = dependencies.providerCall
+      ? await dependencies.providerCall(reference)
+      : reference.provider === "saramin" ? await previewSaramin(reference) : await previewJobKorea(reference);
     return { reference, result, warnings: [] };
   } catch (error) {
     const code = error instanceof SourceError ? error.code : "SOURCE_UNAVAILABLE";

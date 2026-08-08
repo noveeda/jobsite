@@ -944,7 +944,10 @@ export type Database = {
       source_providers: {
         Row: {
           access_mode: string | null
+          activation_required: boolean
           approval_reference: string | null
+          approval_expires_at: string | null
+          approval_status: string
           attribution: Json
           capabilities: Json
           code: string
@@ -953,17 +956,23 @@ export type Database = {
           disabled_reason: string | null
           display_name: string
           enabled: boolean
+          enabled_at: string | null
+          enabled_by: string | null
           last_error_code: string | null
           last_success_at: string | null
           page_limit: number | null
           refresh_interval_minutes: number
           retention_policy: Json
+          staging_smoke_reference: string | null
           terms_url: string | null
           updated_at: string
         }
         Insert: {
           access_mode?: string | null
+          activation_required?: boolean
           approval_reference?: string | null
+          approval_expires_at?: string | null
+          approval_status?: string
           attribution?: Json
           capabilities?: Json
           code: string
@@ -972,17 +981,23 @@ export type Database = {
           disabled_reason?: string | null
           display_name: string
           enabled?: boolean
+          enabled_at?: string | null
+          enabled_by?: string | null
           last_error_code?: string | null
           last_success_at?: string | null
           page_limit?: number | null
           refresh_interval_minutes?: number
           retention_policy?: Json
+          staging_smoke_reference?: string | null
           terms_url?: string | null
           updated_at?: string
         }
         Update: {
           access_mode?: string | null
+          activation_required?: boolean
           approval_reference?: string | null
+          approval_expires_at?: string | null
+          approval_status?: string
           attribution?: Json
           capabilities?: Json
           code?: string
@@ -991,11 +1006,14 @@ export type Database = {
           disabled_reason?: string | null
           display_name?: string
           enabled?: boolean
+          enabled_at?: string | null
+          enabled_by?: string | null
           last_error_code?: string | null
           last_success_at?: string | null
           page_limit?: number | null
           refresh_interval_minutes?: number
           retention_policy?: Json
+          staging_smoke_reference?: string | null
           terms_url?: string | null
           updated_at?: string
         }

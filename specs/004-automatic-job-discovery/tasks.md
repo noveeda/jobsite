@@ -180,6 +180,7 @@ description: "자동 통합 채용공고 탐색의 의존성 순서 작업 목�
 
 **Purpose**: 실제 허용 출처, 예약 실행, 접근성, Linux, 운영·출시 게이트를 완성한다.
 
+- [X] U5 Add a restricted source-provider approval record and server-side activation resolver that fails closed before Saramin preview, refresh, and catalog fetches; document evidence without credentials in `supabase/migrations/20260809001000_source_activation_gate.sql`, `lib/sources/activation.ts`, and `docs/operations/source-approvals.md`
 - [ ] T065 After T003 and T024, add a hosted-only hourly Supabase Cron/pg_net schedule with Vault URL/CRON_SECRET preflight, six-hour provider due checks, local-reset no-op guard, and rollback instructions in supabase/migrations/20260808000800_schedule_collection.sql and docs/operations/deploy.md
 - [ ] T066 [P] Add cron invocation, lease expiry, quota exhaustion, provider disable, stale hiding, and rollback procedures in docs/operations/incident-response.md and docs/operations/rollback.md
 - [ ] T067 [P] Verify Work24 access eligibility and written permission, and record only the approval or denial reference, terms, attribution, and retention decision in docs/operations/source-approvals.md without implementing or enabling an unapproved connector

@@ -80,12 +80,15 @@
 ## 6. 외부 제공자 조건
 
 - [x] 승인·credential이 없을 때 connector가 manual fallback을 사용하도록 설계돼 있다.
+- [x] 실제 provider는 restricted `source_providers` approval record와 서버 credential을 모두 통과해야 하며, preview·refresh·collector 직전에 다시 검사한다. 환경 플래그와 credential만으로 live request를 만들 수 없다.
+- [x] [source-approvals.md](./source-approvals.md)는 fixture와 실제 제공자 증거를 분리하고 approval, retention, quota, attribution, staging smoke, operator enablement, disable drill의 secret-free 기록 양식을 제공한다.
 - [ ] production의 SARAMIN_CONNECTOR_ENABLED 실제 값이 출시 결정에 기록돼 있다.
 - [ ] 사람인 connector를 끈 채 출시한다면 SARAMIN_API_KEY가 production에 불필요하게 저장되지 않았고 수동 표기가 staging에서 확인됐다.
 - [ ] 사람인 connector를 켠다면 API 승인, 실제 사용 URL 등록, access-key, 무료 제공 조건, 호출 한도, 필수 Powered by 취업 사람인 표기와 원문 링크를 모두 직접 확인했다.
 - [ ] production의 JOBKOREA_CONNECTOR_ENABLED 실제 값이 출시 결정에 기록돼 있다.
 - [ ] 잡코리아 connector를 켠다면 승인, 발급 endpoint, 등록 IP 조건, 표시 조건을 직접 확인했다.
 - [ ] provider 장애 시 connector를 끄고 기존 공고·메모·상태·일정·원문 링크가 유지되는 staging 증거가 있다.
+- [ ] 두 독립 provider의 승인 기록, 100개 active 공고, attribution, redacted request log, freshness 측정, backup/rollback drill, 대표 사용자 trial 증거가 모두 있다. fixture는 이 조건을 충족하지 않는다.
 - [x] Windows 전체 검증은 두 connector를 비활성화하고 fixture만 사용했다. 로컬 Debian/Node 24 검증도 통과했지만, Ubuntu GitHub Actions의 동일 조건과 정확한 run URL은 아직 확인되지 않았다.
 
 ## 7. Staging 사용자 여정
