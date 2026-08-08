@@ -3,7 +3,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { prepareSourcePosting } from "@/lib/collection/normalize";
 import { claimCollectionRun, consumeProviderQuota } from "@/lib/collection/quota";
 import { pageCursorFixtureAdapter, tokenCursorFixtureAdapter } from "@/lib/sources/fixtures/adapters";
-import { resolveSaraminActivation } from "@/lib/sources/activation";
 import { createSaraminCatalogAdapter } from "@/lib/sources/saramin";
 import {
   ProviderAdapterError,
@@ -98,7 +97,7 @@ function adapterFor(providerCode: string): RuntimeAdapter {
     return tokenCursorFixtureAdapter as unknown as RuntimeAdapter;
   }
   if (providerCode === "saramin") {
-    return createSaraminCatalogAdapter(fetch, true) as unknown as RuntimeAdapter;
+    return createSaraminCatalogAdapter(fetch) as unknown as RuntimeAdapter;
   }
   throw new ProviderAdapterError({ code: "CONNECTOR_DISABLED" });
 }
@@ -211,13 +210,6 @@ function databaseDependencies(client: SupabaseClient<Database>, requestedProvide
             runId: input.runId,
             signal: input.signal,
           });
-          // Re-read the restricted activation record immediately before each
-          // potentially live Saramin request. A concurrent disable therefore
-          // fails closed before the provider adapter receives control.
-          if (input.providerCode === "saramin") {
-            const activation = await resolveSaraminActivation();
-            if (!activation.enabled) throw new ProviderAdapterError({ code: "CONNECTOR_DISABLED" });
-          }
           page = providerPageSchema.parse(await adapter.fetchPage(request));
         } catch (error) {
           if (error instanceof ProviderAdapterError) throw error;

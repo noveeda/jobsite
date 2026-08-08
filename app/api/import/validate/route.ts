@@ -5,9 +5,7 @@ import { logSafeEvent, requestId } from "@/lib/observability/safe-logger";
 import { consumeRateLimit } from "@/lib/security/rate-limit";
 import { isSameOrigin, readLimitedText, RequestTooLargeError } from "@/lib/security/request";
 import { createClient } from "@/lib/supabase/server";
-import { validateBackupText } from "@/lib/validation/backup";
-
-const MAX_BYTES = 10 * 1024 * 1024;
+import { MAX_BACKUP_BYTES, validateBackupText } from "@/lib/validation/backup";
 
 export async function POST(request: Request) {
   const id = requestId(request.headers.get("x-request-id"));
@@ -19,7 +17,7 @@ export async function POST(request: Request) {
 
   let text: string;
   try {
-    text = await readLimitedText(request, MAX_BYTES);
+    text = await readLimitedText(request, MAX_BACKUP_BYTES);
   } catch (error) {
     if (error instanceof RequestTooLargeError) return NextResponse.json({ code: "BACKUP_TOO_LARGE", message: "백업은 10 MiB 이하여야 합니다.", requestId: id }, { status: 413 });
     throw error;
@@ -47,5 +45,5 @@ export async function POST(request: Request) {
   if (isV1) {
     return NextResponse.json({ valid: true, schemaVersion: payload.schemaVersion, counts: { jobs: legacy.jobs.length, sources: legacy.sources.length, duplicatePairs: legacy.duplicatePairs.length, revisions: legacy.revisions.length, personalStates: 0, duplicateDecisions: 0, manualLinks: 0 }, conflicts, warnings: [] }, { headers: { "x-request-id": id } });
   }
-  return NextResponse.json({ valid: true, schemaVersion: payload.version, counts: { jobs: legacy.jobs.length, sources: legacy.sources.length, duplicatePairs: legacy.duplicatePairs.length, revisions: legacy.revisions.length, personalStates: payload.personalStates.length, duplicateDecisions: payload.duplicateDecisions.length, manualLinks: payload.manualLinks.length }, conflicts, warnings: ["버전 2 복원은 아직 준비 중입니다."] }, { headers: { "x-request-id": id } });
+  return NextResponse.json({ valid: true, schemaVersion: payload.version, counts: { jobs: legacy.jobs.length, sources: legacy.sources.length, duplicatePairs: legacy.duplicatePairs.length, revisions: legacy.revisions.length, personalStates: payload.personalStates.length, duplicateDecisions: payload.duplicateDecisions.length, manualLinks: payload.manualLinks.length }, conflicts, warnings: [] }, { headers: { "x-request-id": id } });
 }

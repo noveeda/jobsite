@@ -6,9 +6,7 @@ import { logSafeEvent, requestId } from "@/lib/observability/safe-logger";
 import { consumeRateLimit } from "@/lib/security/rate-limit";
 import { isSameOrigin, readLimitedText, RequestTooLargeError } from "@/lib/security/request";
 import { createClient } from "@/lib/supabase/server";
-import { validateBackupText } from "@/lib/validation/backup";
-
-const MAX_BYTES = 10 * 1024 * 1024;
+import { MAX_BACKUP_BYTES, validateBackupText } from "@/lib/validation/backup";
 
 export async function POST(request: Request) {
   const id = requestId(request.headers.get("x-request-id"));
@@ -20,7 +18,7 @@ export async function POST(request: Request) {
 
   let text: string;
   try {
-    text = await readLimitedText(request, MAX_BYTES);
+    text = await readLimitedText(request, MAX_BACKUP_BYTES);
   } catch (error) {
     if (error instanceof RequestTooLargeError) return NextResponse.json({ code: "BACKUP_TOO_LARGE", message: "백업은 10 MiB 이하여야 합니다.", requestId: id }, { status: 413 });
     throw error;

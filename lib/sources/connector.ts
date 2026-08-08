@@ -79,7 +79,7 @@ export type RefreshResponse = {
 
 type RefreshDependencies = {
   now?: () => Date;
-  providerEnabled?: (provider: Provider) => boolean;
+  providerEnabled?: (provider: Provider) => boolean | Promise<boolean>;
   providerCall?: (reference: SourceReference) => Promise<SourceResult>;
   persist?: (result: RefreshPersistence) => Promise<void>;
 };
@@ -99,8 +99,8 @@ async function callProvider(reference: SourceReference) {
 }
 
 async function activeByApproval(provider: Provider) {
-  if (provider !== "saramin") return false;
-  return (await resolveSaraminActivation()).enabled;
+  if (provider === "saramin") return (await resolveSaraminActivation()).enabled;
+  return provider === "jobkorea" && process.env.JOBKOREA_CONNECTOR_ENABLED === "true";
 }
 
 function sameValue(a: unknown, b: unknown) {

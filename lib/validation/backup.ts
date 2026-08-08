@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const MAX_BACKUP_BYTES = 10 * 1024 * 1024;
+export const MAX_BACKUP_BYTES = 10 * 1024 * 1024;
 const MAX_ERRORS = 20;
 const uuid = z.uuid();
 const isoDate = z.iso.datetime();

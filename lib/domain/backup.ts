@@ -1,8 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
-import { backupSchemaV1, backupSchemaV2, type BackupV1, type BackupV2 } from "@/lib/validation/backup";
-
-const MAX_BACKUP_BYTES = 10 * 1024 * 1024;
+import { backupSchemaV1, backupSchemaV2, MAX_BACKUP_BYTES, type BackupV1, type BackupV2 } from "@/lib/validation/backup";
 
 const forbidden = /^(?:user_?id|search_document|token|access_?token|refresh_?token|secret|password|credential|api_?key|raw_?body|full_?body)$/i;
 

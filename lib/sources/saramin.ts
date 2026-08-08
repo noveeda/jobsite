@@ -1,4 +1,5 @@
 import { SourceError, type SourceReference, type SourceResult } from "./connector";
+import { resolveSaraminActivation } from "./activation";
 import {
   ProviderAdapterError,
   type FieldProvenanceEntry,
@@ -216,8 +217,19 @@ function normalizeCatalogRecord(record: SaraminCatalogRecord, fetchedAt: string)
   };
   const location = named(record.position?.location);
   const category = named(record.position?.["job-code"]);
+  const companyUrl = safeSaraminUrl(record.company?.detail?.href);
+  const roleName = text(record.position?.["job-mid-code"]?.name);
   const employmentType = text(record.position?.["job-type"]?.name);
   const experience = record.position?.["experience-level"];
+  const careerMinYears = nonNegativeInteger(experience?.min);
+  const careerMaxYears = nonNegativeInteger(experience?.max);
+  const experienceText = text(experience?.name);
+  const educationText = text(record.position?.["required-education-level"]?.name);
+  const industry = text(record.position?.industry?.name);
+  const salaryText = text(record.salary?.name);
+  const postedAt = utcFromUnix(record["posting-timestamp"]);
+  const modifiedAt = utcFromUnix(record["modification-timestamp"]);
+  const openedAt = utcFromUnix(record["opening-timestamp"]);
   const closeType = named(record["close-type"]);
   const closeCode = text(record["close-type"]?.code);
   const expiresAt = utcFromUnix(record["expiration-timestamp"]);
@@ -232,20 +244,20 @@ function normalizeCatalogRecord(record: SaraminCatalogRecord, fetchedAt: string)
   const normalized: NormalizedJobCandidate = {
     title,
     companyName,
-    ...(safeSaraminUrl(record.company?.detail?.href) ? { companyUrl: safeSaraminUrl(record.company?.detail?.href) } : {}),
-    ...(text(record.position?.["job-mid-code"]?.name) ? { roleName: text(record.position?.["job-mid-code"]?.name) } : {}),
+    ...(companyUrl ? { companyUrl } : {}),
+    ...(roleName ? { roleName } : {}),
     ...(location ? { locations: [location] } : {}),
     ...(employmentType ? { employmentTypes: [employmentType] } : {}),
-    ...(nonNegativeInteger(experience?.min) !== undefined ? { careerMinYears: nonNegativeInteger(experience?.min) } : {}),
-    ...(nonNegativeInteger(experience?.max) !== undefined ? { careerMaxYears: nonNegativeInteger(experience?.max) } : {}),
-    ...(text(experience?.name) ? { experienceText: text(experience?.name) } : {}),
-    ...(text(record.position?.["required-education-level"]?.name) ? { educationText: text(record.position?.["required-education-level"]?.name) } : {}),
-    ...(text(record.position?.industry?.name) ? { industry: text(record.position?.industry?.name) } : {}),
+    ...(careerMinYears !== undefined ? { careerMinYears } : {}),
+    ...(careerMaxYears !== undefined ? { careerMaxYears } : {}),
+    ...(experienceText ? { experienceText } : {}),
+    ...(educationText ? { educationText } : {}),
+    ...(industry ? { industry } : {}),
     ...(category ? { jobCategories: [category] } : {}),
-    ...(text(record.salary?.name) ? { salaryText: text(record.salary?.name) } : {}),
-    ...(utcFromUnix(record["posting-timestamp"]) ? { postedAt: utcFromUnix(record["posting-timestamp"]) } : {}),
-    ...(utcFromUnix(record["modification-timestamp"]) ? { modifiedAt: utcFromUnix(record["modification-timestamp"]) } : {}),
-    ...(utcFromUnix(record["opening-timestamp"]) ? { openedAt: utcFromUnix(record["opening-timestamp"]) } : {}),
+    ...(salaryText ? { salaryText } : {}),
+    ...(postedAt ? { postedAt } : {}),
+    ...(modifiedAt ? { modifiedAt } : {}),
+    ...(openedAt ? { openedAt } : {}),
     ...(expiresAt ? { expiresAt } : {}),
     deadlineKind,
   };
@@ -307,15 +319,17 @@ export function parseSaraminCatalogPage(
   };
 }
 
-export function createSaraminCatalogAdapter(fetcher: typeof fetch = fetch, activated = false): ProviderAdapter<SaraminCatalogRecord> {
+export function createSaraminCatalogAdapter(
+  fetcher: typeof fetch = fetch,
+  resolveActivation: typeof resolveSaraminActivation = resolveSaraminActivation,
+): ProviderAdapter<SaraminCatalogRecord> {
   const providerConfiguration = configuration();
-  const key = process.env.SARAMIN_API_KEY;
-  const enabled = activated;
-  providerConfiguration.enabled = enabled;
   return {
     configuration: providerConfiguration,
     async fetchPage(input) {
-      if (!enabled || !key) throw new ProviderAdapterError({ code: "CONNECTOR_DISABLED" });
+      const activation = await resolveActivation();
+      const key = process.env.SARAMIN_API_KEY;
+      if (!activation.enabled || !key) throw new ProviderAdapterError({ code: "CONNECTOR_DISABLED" });
       if (input.signal.aborted) throw new ProviderAdapterError({ code: "SOURCE_TIMEOUT" });
       const page = cursorPage(input.cursor);
       const url = new URL(SARAMIN_ENDPOINT);

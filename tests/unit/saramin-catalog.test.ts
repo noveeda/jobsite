@@ -66,6 +66,18 @@ describe("Saramin catalog adapter", () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
+  it("requires the persisted activation result at the adapter fetch boundary", async () => {
+    process.env.SARAMIN_API_KEY = "fixture-secret-key";
+    const fetcher = vi.fn();
+    const adapter = createSaraminCatalogAdapter(
+      fetcher as unknown as typeof fetch,
+      async () => ({ enabled: false as const, provider: "saramin" as const, reason: "SOURCE_APPROVAL_WITHDRAWN" as const }),
+    );
+
+    await expect(adapter.fetchPage(input)).rejects.toMatchObject({ code: "CONNECTOR_DISABLED" });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it("marks only the final reconciliation page as a complete snapshot", () => {
     expect(parseSaraminCatalogPage(pagePayload(), { cursor: null, runKind: "incremental" }).snapshotComplete).toBe(false);
     expect(parseSaraminCatalogPage(pagePayload(), { cursor: null, runKind: "reconciliation" }).snapshotComplete).toBe(true);
