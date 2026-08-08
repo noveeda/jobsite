@@ -45,6 +45,27 @@ const catalogDisplayItemSchema = z.object({
   sources: z.array(catalogSourceSchema).min(1),
 }).strict();
 
+export const catalogDuplicateCandidateSchema = z.object({
+  leftJobId: z.string().uuid(),
+  rightJobId: z.string().uuid(),
+  score: z.number().min(0).max(1),
+  reasons: z.object({
+    companyMatch: z.boolean(),
+    titleSimilarity: z.number().min(0).max(1),
+    roleMatch: z.boolean(),
+    locationMatch: z.boolean(),
+    postedWithinDays: z.boolean(),
+  }).strict(),
+}).strict().superRefine((candidate, context) => {
+  if (candidate.leftJobId >= candidate.rightJobId) {
+    context.addIssue({
+      code: "custom",
+      path: ["leftJobId"],
+      message: "Candidate job IDs must be a distinct ordered pair",
+    });
+  }
+});
+
 export const catalogPersonalStateSchema = z.object({
   saved: z.boolean(),
   excluded: z.boolean(),
@@ -96,6 +117,7 @@ export const catalogFeedResponseSchema = z.object({
 export type CatalogFeedItem = z.infer<typeof catalogFeedItemSchema>;
 export type CatalogJobDetail = NonNullable<z.infer<typeof catalogJobDetailSchema>>;
 export type CatalogFeedResponse = z.infer<typeof catalogFeedResponseSchema>;
+export type CatalogDuplicateCandidate = z.infer<typeof catalogDuplicateCandidateSchema>;
 
 const pageSize = 30;
 const maxTake = 1_020;
