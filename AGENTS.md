@@ -17,3 +17,14 @@ For every task that modifies this repository, use the `git-conventions` skill.
 The user grants standing authorization to stage, commit, and push only the files Codex changed for a successfully completed task. Create one atomic checkpoint per logical task after its required validation passes. Never include pre-existing, user-owned, unrelated, incomplete, or failing changes. If ownership is ambiguous, leave those files untouched and report that no automatic checkpoint was made.
 
 <!-- END:project-versioning-rules -->
+
+<!-- BEGIN:compound-engineering-rules -->
+
+# Compound engineering memory
+
+Before database, E2E, authentication, or date/time work, read
+`docs/engineering/lessons-learned.md`. When a non-trivial failure is fixed,
+append only a reusable root cause, guardrail, and proof command; never record
+credentials, environment values, or one-off debugging noise.
+
+<!-- END:compound-engineering-rules -->
