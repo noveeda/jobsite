@@ -48,7 +48,7 @@ export type CatalogDuplicateActionState =
   }
   | {
     ok: false;
-    code: "INVALID_INPUT" | "AUTH_REQUIRED" | "SAVE_FAILED";
+    code: "INVALID_INPUT" | "AUTH_REQUIRED" | "STALE_REVISION" | "SAVE_FAILED";
     message: string;
   }
   | null;
@@ -69,6 +69,12 @@ const saveFailed = (): CatalogDuplicateActionState => ({
   ok: false,
   code: "SAVE_FAILED",
   message: "변경 내용을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+});
+
+const staleRevision = (): CatalogDuplicateActionState => ({
+  ok: false,
+  code: "STALE_REVISION",
+  message: "다른 화면에서 판단이 변경되었습니다. 최신 내용을 확인한 뒤 다시 시도해 주세요.",
 });
 
 function blocked(code: "SEPARATE_CONFLICT" | "INDIRECT_MERGE_CONFLICT" | "COMPONENT_LIMIT", blockingEdges: string[]): CatalogDuplicateActionState {
@@ -137,7 +143,13 @@ async function submitDecision(
       target_expected_revision: input.data.expectedRevision,
       target_payload: { catalogJobId: input.data.catalogJobId },
     });
-    if (error) return saveFailed();
+    if (error) {
+      if (error.code === "40001") {
+        refreshCatalogDuplicate(input.data.catalogJobId);
+        return staleRevision();
+      }
+      return saveFailed();
+    }
 
     const result = successResultSchema.safeParse(data);
     if (result.success) {

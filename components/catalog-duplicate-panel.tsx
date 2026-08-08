@@ -61,6 +61,7 @@ function DecisionForm({
     if (state?.ok === false && "blockingEdges" in state) {
       onConflict({ code: state.code, blockingEdges: state.blockingEdges });
     }
+    if (state?.ok === true) onConflict(null);
   }, [onConflict, state]);
 
   return (
@@ -157,7 +158,7 @@ function CandidatePanel({ candidate, allCandidates }: { candidate: Candidate; al
         <h3 id={`sources-${candidate.id}`}>원문 출처</h3>
         {candidate.sources.map((source) => (
           <div className="stack source-attribution" key={`${source.provider}:${source.originalUrl}`}>
-            <ProviderAttribution provider={source.provider} providerLabel={source.providerName} connectorMode="manual" originalUrl={source.originalUrl} />
+            {source.originalUrl ? <ProviderAttribution provider={source.provider} providerLabel={source.providerName} connectorMode="manual" originalUrl={source.originalUrl} /> : <p className="muted">원문 링크를 안전하게 표시할 수 없습니다.</p>}
             <p className="muted">관찰 시각 {new Date(source.observedAt).toLocaleString("ko-KR")}</p>
           </div>
         ))}

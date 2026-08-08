@@ -82,6 +82,16 @@ test.describe("automatic catalog duplicate controls", () => {
     await expect(candidatePanel(page, duplicateB)).toContainText("판단 전");
   });
 
+  test("never lets the local duplicate fixture reconnect an explicit separate pair", async ({ page }) => {
+    await page.goto(`/jobs/${duplicateA}`);
+    const ab = candidatePanel(page, duplicateB);
+    await ab.getByRole("button", { name: `${duplicateB} 공고와 별개로 유지` }).click();
+    await expect(ab).toContainText("별개로 유지됨");
+    await ab.getByRole("button", { name: `${duplicateB} 공고와 병합` }).click();
+    await expect(page.getByLabel("결정 차단 안내")).toContainText("요청은 적용되지 않았습니다");
+    await expect(ab).toContainText("separate");
+  });
+
   test("rejects an indirect separation and preserves the blocking sources and state", async ({ page }) => {
     await page.goto(`/jobs/${duplicateA}`);
     await candidatePanel(page, duplicateB).getByRole("button", { name: `${duplicateB} 공고와 병합` }).click();

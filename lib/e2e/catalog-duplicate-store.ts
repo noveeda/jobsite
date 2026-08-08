@@ -56,13 +56,13 @@ function findCandidate(candidateId: string) {
   return candidates.find((candidate) => candidate.id === candidateId) ?? null;
 }
 
-function connected(state: State, userId: string, start: string, end: string, excludedCandidateId?: string) {
+function connected(state: State, userId: string, start: string, end: string, excludedCandidateId?: string, addedCandidateId?: string) {
   const visited = new Set([start]);
   const pending = [start];
   while (pending.length) {
     const current = pending.shift()!;
     for (const candidate of candidates) {
-      if (candidate.id === excludedCandidateId || state.decisions[decisionKey(userId, candidate.id)]?.decision !== "merged") continue;
+      if (candidate.id === excludedCandidateId || (candidate.id !== addedCandidateId && state.decisions[decisionKey(userId, candidate.id)]?.decision !== "merged")) continue;
       const next = candidate.left === current ? candidate.right : candidate.right === current ? candidate.left : null;
       if (!next || visited.has(next)) continue;
       if (next === end) return true;
@@ -151,8 +151,8 @@ export async function setE2ECatalogDuplicateDecision(input: {
     return result;
   }
   if (input.action === "merge") {
-    const separatelyHeld = candidates.find((other) => state.decisions[decisionKey(input.userId, other.id)]?.decision === "separate"
-      && connected(state, input.userId, other.left, other.right));
+    const separatelyHeld = current.decision === "separate" ? candidate : candidates.find((other) => state.decisions[decisionKey(input.userId, other.id)]?.decision === "separate"
+      && connected(state, input.userId, other.left, other.right, undefined, candidate.id));
     if (separatelyHeld) {
       const result = conflict("SEPARATE_CONFLICT", [separatelyHeld.id]);
       state.operations[operation] = result;

@@ -92,6 +92,13 @@ describe("catalog duplicate Server Actions", () => {
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 
+  it("refreshes the latest decision after a stale revision instead of offering a dead retry", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "40001" } });
+    const result = await mergeCatalogDuplicate(null, decisionForm());
+    expect(result).toMatchObject({ ok: false, code: "STALE_REVISION" });
+    expect(mocks.revalidatePath.mock.calls).toEqual([["/jobs"], [`/jobs/${catalogJobId}`]]);
+  });
+
   it("rejects malformed FormData before authentication or mutation", async () => {
     const result = await mergeCatalogDuplicate(null, decisionForm({ candidateId: "not-a-uuid" }));
 

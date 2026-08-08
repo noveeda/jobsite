@@ -283,6 +283,7 @@ as $$
     where decision.user_id = target_user_id
       and decision.decision = 'merged'
       and decision.candidate_id <> target_excluded_candidate_id
+      and public.catalog_duplicate_is_currently_eligible(candidate.id)
   ), walk(node, path) as (
     select target_start_id, array[target_start_id]::uuid[]
     union all
@@ -429,6 +430,7 @@ begin
     join public.catalog_duplicate_candidates as other_candidate on other_candidate.id = decision.candidate_id
     where decision.user_id = caller_id
       and decision.decision = 'separate'
+      and public.catalog_duplicate_is_currently_eligible(other_candidate.id)
       and (
         (other_candidate.left_canonical_job_id = any(left_nodes) and other_candidate.right_canonical_job_id = any(right_nodes))
         or (other_candidate.right_canonical_job_id = any(left_nodes) and other_candidate.left_canonical_job_id = any(right_nodes))
@@ -440,11 +442,12 @@ begin
     if candidate.right_canonical_job_id = any(left_nodes) then
       select coalesce(jsonb_agg(edge.candidate_id order by edge.candidate_id), '[]'::jsonb)
       into blocking_edges
-      from public.catalog_duplicate_decisions as edge
-      join public.catalog_duplicate_candidates as edge_candidate on edge_candidate.id = edge.candidate_id
-      where edge.user_id = caller_id
-        and edge.decision = 'merged'
-        and edge.candidate_id <> target_candidate_id
+    from public.catalog_duplicate_decisions as edge
+    join public.catalog_duplicate_candidates as edge_candidate on edge_candidate.id = edge.candidate_id
+    where edge.user_id = caller_id
+      and edge.decision = 'merged'
+      and edge.candidate_id <> target_candidate_id
+      and public.catalog_duplicate_is_currently_eligible(edge_candidate.id)
         and (
           (edge_candidate.left_canonical_job_id = any(left_nodes) and edge_candidate.right_canonical_job_id = any(left_nodes))
         );
@@ -573,6 +576,10 @@ as $$
 declare
   source_authority text;
   provider_authority text;
+  source_host text;
+  provider_host text;
+  source_root text;
+  provider_root text;
 begin
   if target_url is null or target_terms_url is null
      or target_url !~ '^https://[^[:space:]@/?#]+(?::[0-9]{1,5})?(?:[/?#]|$)'
@@ -583,7 +590,13 @@ begin
   end if;
   source_authority := lower(substring(target_url from '^https://([^/?#]+)'));
   provider_authority := lower(substring(target_terms_url from '^https://([^/?#]+)'));
-  if source_authority is null or provider_authority is null or source_authority <> provider_authority then
+  source_host := regexp_replace(source_authority, ':[0-9]{1,5}$', '');
+  provider_host := regexp_replace(provider_authority, ':[0-9]{1,5}$', '');
+  source_root := regexp_replace(source_host, '^[^.]+\\.', '');
+  provider_root := regexp_replace(provider_host, '^[^.]+\\.', '');
+  if source_authority is null or provider_authority is null
+     or coalesce(substring(source_authority from ':[0-9]{1,5}$'), ':443') <> coalesce(substring(provider_authority from ':[0-9]{1,5}$'), ':443')
+     or (source_host <> provider_host and source_root <> provider_root) then
     return null;
   end if;
   return target_url;
@@ -643,6 +656,7 @@ declare
   current_run public.collection_runs%rowtype;
   candidate_record record;
 begin
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('catalog_duplicate_refresh', 0));
   select * into current_run
   from public.collection_runs
   where id = target_run_id and provider_code = target_provider_code

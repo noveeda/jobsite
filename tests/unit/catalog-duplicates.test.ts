@@ -104,6 +104,7 @@ describe("catalog duplicate candidates", () => {
     };
 
     expect(catalogDuplicateDetailSchema.safeParse(detail).success).toBe(true);
+    expect(catalogDuplicateDetailSchema.safeParse({ ...detail, candidates: [{ ...detail.candidates[0], active: false, sources: [{ ...detail.candidates[0].sources[0], originalUrl: null }, detail.candidates[0].sources[1]] }] }).success).toBe(true);
     expect(catalogDuplicateDetailSchema.safeParse({ ...detail, unexpected: true }).success).toBe(false);
     expect(catalogDuplicateDetailSchema.safeParse({
       ...detail,

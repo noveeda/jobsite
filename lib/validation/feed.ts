@@ -108,7 +108,7 @@ export const catalogJobDetailSchema = catalogDisplayItemSchema.extend({
 const catalogDuplicateDetailSourceSchema = z.object({
   provider: z.string().regex(/^[a-z][a-z0-9_-]{1,39}$/),
   providerName: z.string().trim().min(1).max(100),
-  originalUrl: httpsUrl,
+  originalUrl: httpsUrl.nullable(),
   observedAt: z.string().datetime({ offset: true }),
 }).strict();
 
