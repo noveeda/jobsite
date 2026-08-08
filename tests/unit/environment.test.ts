@@ -10,6 +10,8 @@ const production = () => ({
   PUBLIC_OPERATOR_NAME: "운영자",
   PUBLIC_PRIVACY_EMAIL: "privacy@example.com",
   PUBLIC_POLICY_EFFECTIVE_DATE: "2026-08-07",
+  AUTOMATIC_DISCOVERY_ENABLED: "false",
+  COLLECTOR_ENABLED: "false",
   SARAMIN_CONNECTOR_ENABLED: "false",
   JOBKOREA_CONNECTOR_ENABLED: "false",
 });
@@ -30,6 +32,25 @@ describe("server environment", () => {
   it("requires connector credentials only when enabled", () => {
     expect(() => validateServerEnvironment({ ...production(), SARAMIN_CONNECTOR_ENABLED: "true" })).toThrow(/SARAMIN_API_KEY/);
     expect(() => validateServerEnvironment({ ...production(), JOBKOREA_CONNECTOR_ENABLED: "true" })).toThrow(/JOBKOREA_API_URL/);
+  });
+
+  it("validates automatic discovery flags without returning collector secrets", () => {
+    const operatorId = "00000000-0000-4000-8000-000000000001";
+    const result = validateServerEnvironment({
+      ...production(),
+      AUTOMATIC_DISCOVERY_ENABLED: "true",
+      COLLECTOR_ENABLED: "true",
+      CRON_SECRET: "collector-secret-at-least-16",
+      OPERATOR_USER_IDS: operatorId,
+    });
+    expect(result).toMatchObject({ automaticDiscoveryEnabled: true, collectorEnabled: true, operatorUserIds: [operatorId] });
+    expect(JSON.stringify(result)).not.toContain("collector-secret");
+  });
+
+  it("fails closed for invalid discovery configuration", () => {
+    expect(() => validateServerEnvironment({ ...production(), AUTOMATIC_DISCOVERY_ENABLED: "yes" })).toThrow(/AUTOMATIC_DISCOVERY_ENABLED/);
+    expect(() => validateServerEnvironment({ ...production(), COLLECTOR_ENABLED: "true" })).toThrow(/CRON_SECRET/);
+    expect(() => validateServerEnvironment({ ...production(), OPERATOR_USER_IDS: "not-a-uuid" })).toThrow(/OPERATOR_USER_IDS/);
   });
 
   it("never enables the E2E bypass in production", () => {

@@ -14,5 +14,23 @@
 
 ## T002 — Disposable local reset
 
-- Status: pending
-- Blocker: Docker and Podman executables were not available on PATH when npx supabase status ran.
+- Date: 2026-08-08 (Asia/Seoul)
+- Target: local PostgreSQL at 127.0.0.1:54322
+- Docker server: 29.6.2
+- Reset: PASS
+- Local migration list: 001, 002, 003, 004, 005, 0060, 0061, 007, 008, 009
+- pgTAP baseline: PASS
+- pgTAP result: 10 files, 114 tests, all successful
+- Remote database: not modified
+
+## T003–T004 — Approval-independent setup
+
+- Date: 2026-08-08 (Asia/Seoul)
+- Environment validation: feature flags default off; collector secret and operator UUIDs fail closed
+- Secret exposure: no real values committed; server-only secret and provider key omitted from validator return
+- Fixture providers: two deterministic cursor styles, 60 records each, 120 active records total
+- Intentional cross-provider duplicate signatures: 1
+- External API calls: none
+- Vitest: 21 files, 96 tests, all successful
+- TypeScript typecheck: PASS
+- ESLint: PASS

@@ -3,7 +3,15 @@ import { z } from "zod";
 const url = z.string().url();
 const httpsUrl = url.refine((value) => new URL(value).protocol === "https:", "HTTPS URL이 필요합니다.");
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const featureFlag = z.enum(["true", "false"]);
+const cronSecret = z.string().min(16);
+const uuid = z.string().uuid();
+const operatorIds = z.string().refine((value) => {
+  const ids = value.split(",").map((id) => id.trim());
+  return ids.length > 0 && ids.every((id) => uuid.safeParse(id).success) && new Set(ids).size === ids.length;
+}, "쉼표로 구분한 고유한 UUID 목록이 필요합니다.");
 const enabled = (value: string | undefined) => value === "true";
+const configured = (value: string | undefined) => Boolean(value?.trim());
 
 export type EnvironmentSource = Record<string, string | undefined>;
 
@@ -29,6 +37,11 @@ export function validateServerEnvironment(environment: EnvironmentSource = proce
       PUBLIC_POLICY_EFFECTIVE_DATE: isoDate,
     });
   }
+  for (const name of ["AUTOMATIC_DISCOVERY_ENABLED", "COLLECTOR_ENABLED"] as const) {
+    if (configured(environment[name])) required[name] = featureFlag;
+  }
+  if (enabled(environment.COLLECTOR_ENABLED) || configured(environment.CRON_SECRET)) required.CRON_SECRET = cronSecret;
+  if (configured(environment.OPERATOR_USER_IDS)) required.OPERATOR_USER_IDS = operatorIds;
   if (enabled(environment.SARAMIN_CONNECTOR_ENABLED)) required.SARAMIN_API_KEY = z.string().min(1);
   if (enabled(environment.JOBKOREA_CONNECTOR_ENABLED)) required.JOBKOREA_API_URL = httpsUrl;
 
@@ -46,6 +59,11 @@ export function validateServerEnvironment(environment: EnvironmentSource = proce
 
   return {
     appBaseUrl: environment.APP_BASE_URL,
+    automaticDiscoveryEnabled: enabled(environment.AUTOMATIC_DISCOVERY_ENABLED),
+    collectorEnabled: enabled(environment.COLLECTOR_ENABLED),
+    operatorUserIds: configured(environment.OPERATOR_USER_IDS)
+      ? environment.OPERATOR_USER_IDS!.split(",").map((id) => id.trim())
+      : [],
     operatorName: environment.PUBLIC_OPERATOR_NAME,
     privacyEmail: environment.PUBLIC_PRIVACY_EMAIL,
     policyEffectiveDate: environment.PUBLIC_POLICY_EFFECTIVE_DATE,
