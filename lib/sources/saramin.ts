@@ -106,8 +106,9 @@ export function normalizeSaraminPayload(payload: SaraminFixture): SourceResult {
 }
 
 export async function previewSaramin(reference: SourceReference, fetcher: typeof fetch = fetch): Promise<SourceResult> {
+  const activation = await resolveSaraminActivation();
   const key = process.env.SARAMIN_API_KEY;
-  if (!key || !reference.externalId) throw new SourceError("CONNECTOR_DISABLED");
+  if (!activation.enabled || !key || !reference.externalId) throw new SourceError("CONNECTOR_DISABLED");
   if (!dailyBudget.consume(new Date())) throw new SourceError("SOURCE_RATE_LIMITED");
   const url = new URL(SARAMIN_ENDPOINT);
   url.searchParams.set("access-key", key);
