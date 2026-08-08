@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createCatalogDuplicateCandidate } from "@/lib/domain/catalog-duplicates";
+import { catalogDuplicateControlState } from "@/lib/domain/catalog-duplicate-control";
 import { catalogDuplicateCandidateSchema, catalogDuplicateDetailSchema } from "@/lib/validation/feed";
 
 const leftId = "10000000-0000-4000-8000-000000000001";
@@ -108,5 +109,29 @@ describe("catalog duplicate candidates", () => {
       candidates: [{ ...detail.candidates[0], sources: [{ ...detail.candidates[0].sources[0], originalUrl: "https://user:pass@one.example.com/jobs/1" }] }],
     }).success).toBe(false);
     expect(catalogDuplicateDetailSchema.safeParse({ ...detail, candidates: Array.from({ length: 26 }, () => detail.candidates[0]) }).success).toBe(false);
+  });
+});
+
+describe("catalog duplicate control state", () => {
+  it.each([
+    ["undecided", null, true, { canMerge: true, canSeparate: true, canUndo: false, canReport: true }],
+    ["merged", "merged", true, { canMerge: false, canSeparate: true, canUndo: true, canReport: true }],
+    ["separate", "separate", true, { canMerge: true, canSeparate: false, canUndo: true, canReport: true }],
+    ["inactive", "merged", false, { canMerge: false, canSeparate: false, canUndo: false, canReport: false }],
+  ] as const)("exposes only the valid %s actions", (_label, decision, active, expected) => {
+    expect(catalogDuplicateControlState({ decision, active })).toMatchObject(expected);
+  });
+
+  it("makes an indirect conflict explicit and preserves the exact undoable blocker ids", () => {
+    expect(catalogDuplicateControlState({
+      decision: "merged",
+      active: true,
+      conflict: { code: "INDIRECT_MERGE_CONFLICT", blockingEdges: [rightId] },
+    })).toMatchObject({
+      canMerge: false,
+      canSeparate: false,
+      blocked: true,
+      blockingEdges: [rightId],
+    });
   });
 });

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { DuplicatePanel } from "@/components/duplicate-panel";
+import { CatalogDuplicatePanel } from "@/components/catalog-duplicate-panel";
 import { JobDetail, type JobRevisionView } from "@/components/job-detail";
 import { ProviderAttribution } from "@/components/provider-attribution";
 import { PersonalJobControls } from "@/components/personal-job-controls";
@@ -13,9 +14,11 @@ import { getTestJob } from "@/lib/e2e/job-store";
 import { getE2EPersonalState } from "@/lib/e2e/personal-state";
 import { isE2EBypass } from "@/lib/environment";
 import { createClient } from "@/lib/supabase/server";
-import { catalogDuplicateDetailSchema, catalogJobDetailSchema, type CatalogJobDetail } from "@/lib/validation/feed";
+import { catalogDuplicateDetailSchema, catalogJobDetailSchema, type CatalogDuplicateDetail, type CatalogJobDetail } from "@/lib/validation/feed";
 
-function CatalogDetail({ job, returnTo }: { job: CatalogJobDetail; returnTo: string }) {
+type CatalogDuplicateCandidateView = CatalogDuplicateDetail["candidates"][number] & { subjectId: string };
+
+function CatalogDetail({ job, returnTo, duplicateCandidates = [] }: { job: CatalogJobDetail; returnTo: string; duplicateCandidates?: CatalogDuplicateCandidateView[] }) {
   return (
     <div className="stack">
       <section className="card stack">
@@ -32,6 +35,7 @@ function CatalogDetail({ job, returnTo }: { job: CatalogJobDetail; returnTo: str
       </section>
       <Link className="button secondary" href={returnTo}>목록으로 돌아가기</Link>
       <PersonalJobControls canonicalJobId={job.id} state={job.personalState} />
+      <CatalogDuplicatePanel candidates={duplicateCandidates} />
     </div>
   );
 }
@@ -117,9 +121,30 @@ export default async function JobDetailPage({ params, searchParams }: { params: 
   if (error || duplicateError) throw new Error("CATALOG_DETAIL_UNAVAILABLE");
   const detail = catalogJobDetailSchema.safeParse(data);
   if (!detail.success) throw new Error("CATALOG_DETAIL_INVALID");
-  if (!catalogDuplicateDetailSchema.safeParse(duplicateData).success) {
+  const duplicateDetail = catalogDuplicateDetailSchema.safeParse(duplicateData);
+  if (!duplicateDetail.success) {
     throw new Error("CATALOG_DUPLICATE_DETAIL_INVALID");
   }
   if (!detail.data) notFound();
-  return <CatalogDetail returnTo={returnTo} job={detail.data} />;
+
+  const candidatesById = new Map<string, CatalogDuplicateCandidateView>();
+  for (const candidate of duplicateDetail.data.candidates) {
+    candidatesById.set(candidate.id, { ...candidate, subjectId: id });
+  }
+  const groupMemberIds = [...new Set(duplicateDetail.data.candidates.flatMap((candidate) => candidate.group.memberIds))]
+    .filter((memberId) => memberId !== id);
+  const relatedDetails = await Promise.all(groupMemberIds.map(async (memberId) => {
+    const { data: relatedData, error: relatedError } = await supabase.rpc("get_catalog_duplicate_detail", { target_id: memberId });
+    if (relatedError) throw new Error("CATALOG_DUPLICATE_DETAIL_UNAVAILABLE");
+    const related = catalogDuplicateDetailSchema.safeParse(relatedData);
+    if (!related.success) throw new Error("CATALOG_DUPLICATE_DETAIL_INVALID");
+    return { memberId, candidates: related.data.candidates };
+  }));
+  for (const related of relatedDetails) {
+    for (const candidate of related.candidates) {
+      if (!candidatesById.has(candidate.id)) candidatesById.set(candidate.id, { ...candidate, subjectId: related.memberId });
+    }
+  }
+  const duplicateCandidates = [...candidatesById.values()].sort((left, right) => left.id.localeCompare(right.id));
+  return <CatalogDetail returnTo={returnTo} job={detail.data} duplicateCandidates={duplicateCandidates} />;
 }

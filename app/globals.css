@@ -77,6 +77,9 @@ textarea { min-height: 100px; resize: vertical; }
 .filter-chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .filter-chip { border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; background: var(--surface); color: var(--text); text-decoration: none; }
 .warning-card { border-color: #f5c451; background: #fffaf0; }
+.catalog-duplicate-candidate { border-color: #cbd8ff; }
+.catalog-duplicate-actions form { display: grid; gap: 6px; }
+.duplicate-conflict { border-left: 3px solid #f5c451; padding-left: 12px; }
 .feed-skeleton { min-height: 120px; background: linear-gradient(90deg, #edf0f5 25%, #f8f9fb 50%, #edf0f5 75%); background-size: 200% 100%; animation: feed-loading 1.2s infinite; }
 .more-results { justify-self: center; }
 @keyframes feed-loading { to { background-position: -200% 0; } }

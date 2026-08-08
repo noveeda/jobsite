@@ -1,4 +1,5 @@
 export type AttributionProvider = "manual" | "saramin" | "jobkorea" | "other";
+export type AttributionProviderInput = AttributionProvider | (string & {});
 export type AttributionConnectorMode = "manual" | "approved_api";
 
 export type AttributionDecision =
@@ -16,13 +17,14 @@ export const SOURCE_PRIORITY_NOTICE = "저장된 정보는 원문을 대체하�
 export const NO_AFFILIATION_NOTICE = "본 서비스는 해당 채용 플랫폼과 제휴 관계가 아닙니다.";
 
 export function decideProviderAttribution(
-  provider: AttributionProvider,
+  provider: AttributionProviderInput,
   connectorMode: AttributionConnectorMode,
+  providerLabel?: string,
 ): AttributionDecision {
   if (provider === "saramin" && connectorMode === "approved_api") {
     return { kind: "saramin_approved", manualLabel: null };
   }
-  return { kind: "manual", manualLabel: MANUAL_LABELS[provider] };
+  return { kind: "manual", manualLabel: providerLabel ?? MANUAL_LABELS[provider as AttributionProvider] ?? `${provider} · 원문 제공` };
 }
 
 function safeHttpsUrl(value: string) {
@@ -38,12 +40,14 @@ export function ProviderAttribution({
   provider,
   connectorMode,
   originalUrl,
+  providerLabel,
 }: {
-  provider: AttributionProvider;
+  provider: AttributionProviderInput;
   connectorMode: AttributionConnectorMode;
   originalUrl: string;
+  providerLabel?: string;
 }) {
-  const decision = decideProviderAttribution(provider, connectorMode);
+  const decision = decideProviderAttribution(provider, connectorMode, providerLabel);
   const sourceUrl = safeHttpsUrl(originalUrl);
 
   return (
