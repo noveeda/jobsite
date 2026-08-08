@@ -75,6 +75,7 @@ describe("server environment", () => {
 
   it("never enables the E2E bypass in production", () => {
     expect(isE2EBypass({ NODE_ENV: "production", E2E_BYPASS_AUTH: "true" })).toBe(false);
+    expect(isE2EBypass({ NODE_ENV: "production", VERCEL_ENV: "preview", E2E_BYPASS_AUTH: "true" })).toBe(false);
     expect(() => validateServerEnvironment({ ...production(), E2E_BYPASS_AUTH: "true" })).toThrow(/E2E_BYPASS_AUTH/);
   });
 });

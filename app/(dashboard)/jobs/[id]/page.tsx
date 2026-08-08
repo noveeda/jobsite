@@ -9,7 +9,8 @@ import { PersonalJobControls } from "@/components/personal-job-controls";
 import { SourceStatus } from "@/components/source-status";
 import { requireUser } from "@/lib/auth";
 import { getDiscoveryScenario } from "@/lib/e2e/automatic-discovery";
-import { discoveryFeedFixtures } from "@/lib/e2e/discovery-feed";
+import { getE2ECatalogDuplicateDetail, isE2EDuplicateScenario } from "@/lib/e2e/catalog-duplicate-store";
+import { discoveryFixturesForScenario } from "@/lib/e2e/discovery-feed";
 import { getTestJob } from "@/lib/e2e/job-store";
 import { getE2EPersonalState } from "@/lib/e2e/personal-state";
 import { isE2EBypass } from "@/lib/environment";
@@ -52,7 +53,7 @@ export default async function JobDetailPage({ params, searchParams }: { params: 
 
   if (isE2EBypass()) {
     if (scenario) {
-      const catalogJob = discoveryFeedFixtures.find((job) => job.id === id);
+      const catalogJob = discoveryFixturesForScenario(scenario).find((job) => job.id === id);
       if (!catalogJob) notFound();
       const personalState = await getE2EPersonalState(user.id, id);
       const lifecycleStatus = scenario === "closed-saved"
@@ -60,7 +61,11 @@ export default async function JobDetailPage({ params, searchParams }: { params: 
         : scenario === "withdrawn-saved"
           ? "withdrawn" as const
           : catalogJob.lifecycleStatus;
-      return <CatalogDetail job={{ ...catalogJob, lifecycleStatus, personalState }} returnTo={returnTo} />;
+      const duplicateDetail = isE2EDuplicateScenario(scenario)
+        ? await getE2ECatalogDuplicateDetail(user.id, id)
+        : null;
+      const duplicateCandidates = (duplicateDetail?.candidates ?? []).map((candidate) => ({ ...candidate, subjectId: id }));
+      return <CatalogDetail job={{ ...catalogJob, lifecycleStatus, personalState }} returnTo={returnTo} duplicateCandidates={duplicateCandidates} />;
     }
     const state = getTestJob(id);
     const source = { id, status: id.endsWith("5") ? "unsupported" as const : id.endsWith("4") ? "unreachable" as const : "unknown" as const, lastSuccessAt: id.endsWith("4") ? "2026-08-01T03:00:00Z" : null };

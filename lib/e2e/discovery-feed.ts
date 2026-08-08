@@ -5,6 +5,7 @@ import type { CatalogFeedItem, CatalogFeedResponse, FeedQuery } from "@/lib/vali
 const providerNames: Record<string, string> = {
   "fixture-page": "Fixture Page",
   "fixture-token": "Fixture Token",
+  "fixture-third": "Fixture Third",
 } as const;
 
 function fixtureId(index: number) {
@@ -49,6 +50,45 @@ export const discoveryFeedFixtures: readonly CatalogFeedItem[] = catalogFixtures
   || right.lastObservedAt.localeCompare(left.lastObservedAt)
   || left.id.localeCompare(right.id)
 );
+
+export const duplicateDiscoveryFeedFixtures: readonly CatalogFeedItem[] = [
+  ["10000000-0000-4000-8000-000000000101", "fixture-page", "Fixture Page", "서울"],
+  ["10000000-0000-4000-8000-000000000102", "fixture-token", "Fixture Token", "경기"],
+  ["10000000-0000-4000-8000-000000000103", "fixture-third", "Fixture Third", "서울"],
+].map(([id, provider, providerName, location], index) => ({
+  id,
+  title: "플랫폼 개발자",
+  companyName: "중복 제어 테스트 회사",
+  roleName: "백엔드",
+  locations: [location],
+  employmentTypes: ["정규직"],
+  careerMinYears: 3,
+  careerMaxYears: 5,
+  experienceText: "experienced",
+  educationText: null,
+  industry: null,
+  jobCategories: ["백엔드"],
+  salaryText: null,
+  postedAt: `2026-08-0${index + 1}T00:00:00.000Z`,
+  deadlineKind: "fixed" as const,
+  deadlineAt: `2026-08-2${index}T15:00:00.000Z`,
+  lifecycleStatus: "active" as const,
+  lastObservedAt: `2026-08-09T0${index + 1}:00:00.000Z`,
+  personalState: { saved: false, excluded: false, applicationStatus: "unreviewed" as const, nextActionAt: null },
+  sources: [{
+    provider,
+    providerName,
+    originalUrl: `https://${provider}.example.invalid/jobs/duplicate-${index + 1}`,
+    lastObservedAt: `2026-08-09T0${index + 1}:00:00.000Z`,
+    attribution: { text: providerName, href: `https://${provider}.example.invalid` },
+  }],
+}));
+
+export function discoveryFixturesForScenario(scenario: DiscoveryScenario | null) {
+  return scenario === "duplicates" || scenario === "duplicates-report-failure"
+    ? duplicateDiscoveryFeedFixtures
+    : discoveryFeedFixtures;
+}
 
 const performanceFeedFixtures: readonly CatalogFeedItem[] = Array.from({ length: 1_000 }, (_, index) => {
   const ordinal = index + 1;
@@ -117,6 +157,8 @@ export function makeDiscoveryFeedFixture(scenario: DiscoveryScenario, query: Fee
     ? []
     : scenario === "performance-1000"
       ? performanceFeedFixtures
+    : scenario === "duplicates" || scenario === "duplicates-report-failure"
+      ? duplicateDiscoveryFeedFixtures
     : scenario === "degraded"
       ? discoveryFeedFixtures.filter(({ sources }) => sources[0].provider === "fixture-page")
       : discoveryFeedFixtures;
@@ -129,10 +171,11 @@ export function makeDiscoveryFeedFixture(scenario: DiscoveryScenario, query: Fee
     total: filtered.length,
     missingCounts: { region: 0, role: 0, career: 0, employment: 0, deadline: 0, source: 0 },
     hasMore: filtered.length > query.take,
-    enabledProviderCount: scenario === "degraded" ? 1 : 2,
+    enabledProviderCount: scenario === "degraded" ? 1 : scenario === "duplicates" || scenario === "duplicates-report-failure" ? 3 : 2,
     providerHealth: [
       { code: "fixture-page", displayName: "Fixture Page", enabled: true, lastSuccessAt: "2026-08-08T09:00:00.000Z", errorCode: failed ? unavailable : null },
       ...(scenario === "degraded" ? [] : [{ code: "fixture-token", displayName: "Fixture Token", enabled: true, lastSuccessAt: "2026-08-08T08:00:00.000Z", errorCode: scenario === "partial" || failed ? unavailable : null }]),
+      ...((scenario === "duplicates" || scenario === "duplicates-report-failure") ? [{ code: "fixture-third", displayName: "Fixture Third", enabled: true, lastSuccessAt: "2026-08-08T07:00:00.000Z", errorCode: null }] : []),
     ],
   };
 }

@@ -17,6 +17,8 @@ export const discoveryScenarioSchema = z.enum([
   "degraded",
   "closed-saved",
   "withdrawn-saved",
+  "duplicates",
+  "duplicates-report-failure",
   "exception",
 ]);
 

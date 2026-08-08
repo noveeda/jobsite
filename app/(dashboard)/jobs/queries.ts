@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getDiscoveryScenario } from "@/lib/e2e/automatic-discovery";
-import { discoveryFeedFixtures, makeDiscoveryFeedFixture, matchesDiscoveryItem } from "@/lib/e2e/discovery-feed";
+import { discoveryFixturesForScenario, makeDiscoveryFeedFixture, matchesDiscoveryItem } from "@/lib/e2e/discovery-feed";
 import { getE2EPersonalState, getE2EUserId } from "@/lib/e2e/personal-state";
 import { isE2EBypass } from "@/lib/environment";
 import {
@@ -44,8 +44,9 @@ export async function getCatalogFeed(input: FeedQueryInput): Promise<CatalogFeed
     const userId = await getE2EUserId();
     if (userId) {
       const fixture = raw as CatalogFeedResponse;
+      const scenarioFixtures = discoveryFixturesForScenario(scenario);
       const fixtureCandidates = query.saved
-        ? discoveryFeedFixtures.filter((item) => matchesDiscoveryItem(item, query))
+        ? scenarioFixtures.filter((item) => matchesDiscoveryItem(item, query))
         : fixture.items;
       const personalized = await Promise.all(fixtureCandidates.map(async (item) => {
         const state = await getE2EPersonalState(userId, item.id);

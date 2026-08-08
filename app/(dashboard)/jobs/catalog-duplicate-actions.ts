@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/auth";
+import { setE2ECatalogDuplicateDecision, submitE2ECatalogDuplicateIssueReport } from "@/lib/e2e/catalog-duplicate-store";
+import { isE2EBypass } from "@/lib/environment";
 import { createClient } from "@/lib/supabase/server";
 
 const uuid = z.string().uuid();
@@ -52,7 +54,7 @@ const invalidInput = (): CatalogDuplicateActionState => ({
   message: "입력 내용을 확인한 뒤 다시 시도해 주세요.",
 });
 
-const authRequired = (): CatalogDuplicateActionState => ({
+const authRequired = (): Exclude<CatalogDuplicateActionState, null> => ({
   ok: false,
   code: "AUTH_REQUIRED",
   message: "로그인 상태를 확인한 뒤 다시 시도해 주세요.",
@@ -83,13 +85,14 @@ function isRedirect(error: unknown) {
     && typeof error.digest === "string" && error.digest.startsWith("NEXT_REDIRECT");
 }
 
-async function authenticateAction() {
+type AuthenticatedAction = { user: { id: string } } | { error: Exclude<CatalogDuplicateActionState, null> };
+
+async function authenticateAction(): Promise<AuthenticatedAction> {
   try {
-    await requireUser();
-    return null;
+    return { user: { id: (await requireUser()).id } };
   } catch (error) {
     if (isRedirect(error)) throw error;
-    return authRequired();
+    return { error: authRequired() };
   }
 }
 
@@ -105,10 +108,22 @@ async function submitDecision(
   });
   if (!input.success) return invalidInput();
 
-  const authenticationError = await authenticateAction();
-  if (authenticationError) return authenticationError;
+  const authentication = await authenticateAction();
+  if ("error" in authentication) return authentication.error;
 
   try {
+    if (isE2EBypass()) {
+      const result = await setE2ECatalogDuplicateDecision({
+        userId: authentication.user.id,
+        candidateId: input.data.candidateId,
+        action,
+        operationId: input.data.operationId,
+        expectedRevision: input.data.expectedRevision,
+      });
+      if (!result.ok) return blocked(result.code, result.blockingEdges);
+      refreshCatalogDuplicate(input.data.catalogJobId);
+      return result;
+    }
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("set_catalog_duplicate_decision", {
       target_candidate_id: input.data.candidateId,
@@ -171,10 +186,19 @@ export async function reportCatalogDuplicateIssue(
   });
   if (!input.success) return invalidInput();
 
-  const authenticationError = await authenticateAction();
-  if (authenticationError) return authenticationError;
+  const authentication = await authenticateAction();
+  if ("error" in authentication) return authentication.error;
 
   try {
+    if (isE2EBypass()) {
+      const result = await submitE2ECatalogDuplicateIssueReport({
+        userId: authentication.user.id,
+        candidateId: input.data.candidateId,
+        operationId: input.data.operationId,
+      });
+      if (!result.ok) return saveFailed();
+      return result;
+    }
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("submit_catalog_duplicate_issue_report", {
       target_candidate_id: input.data.candidateId,
